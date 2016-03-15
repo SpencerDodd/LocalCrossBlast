@@ -64,6 +64,7 @@ class LocalCrossBlast:
 		pass
 
 	# --------------------------- HELPER METHODS ------------------------------
+	#
 
 	"""
 	Creates a given directory in the file system if it doesn't exist
