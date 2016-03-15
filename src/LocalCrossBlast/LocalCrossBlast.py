@@ -19,8 +19,9 @@ class LocalCrossBlast:
 
 		self.program_root_dir = self.one_directory_back(os.getcwd())
 		self.results_dir = self.program_root_dir + "results/"
+		self.query_database = None
 		self.initial_query = None
-		self.queries = []
+		self.cross_queries = []
 
 		# make dirs that have not been created that the program requires
 		self.make_dir(self.results_dir)
@@ -40,9 +41,27 @@ class LocalCrossBlast:
 
 			self.initial_query = new_query
 
+			# change the query db type to this query's db type
+			self.query_database = new_query.get_database()
+
 		else:
 
 			raise Exception("Initial query is not empty (for some reason)")
+
+	"""
+	Queries the blast server for the initial query results
+	"""
+	def perform_initial_query(self):
+
+		pass
+
+	"""
+	Creates queries for each of the initial blast query results. This is the
+	cross-blasting section of the blast.
+	"""
+	def cross_blast_results(self):
+
+		pass
 
 	# --------------------------- HELPER METHODS ------------------------------
 

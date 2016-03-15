@@ -50,3 +50,10 @@ class BlastQuery:
 		else:
 
 			raise Exception("Online BLASTing is not supported yet")
+
+	"""
+	Returns the database of the query's request
+	"""
+	def get_database(self):
+
+		return self.blast_request.get_database()

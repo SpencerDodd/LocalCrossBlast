@@ -36,3 +36,10 @@ class LocalBlastRequest(BlastRequest):
 	def get_query_command(self):
 
 		raise Exception("Base class has no query command")
+
+	"""
+	Returns the database of the request
+	"""
+	def get_database(self):
+
+		return self.database
