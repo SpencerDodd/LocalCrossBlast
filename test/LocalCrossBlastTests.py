@@ -37,3 +37,14 @@ class LocalCrossBlastTests(unittest.TestCase):
 				test_cross.create_fasta_file_cross_blast(test_request)
 
 				self.assertTrue(test_cross.initial_query is not None)
+
+	# tests for directory depth removal
+	def test_directory_depth(self):
+
+		root_dir = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST/"
+		one_dir = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST/src"
+		two_dir = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST/src"
+
+		test_cross = LocalCrossBlast.LocalCrossBlast()
+
+		self.assertEquals(root_dir, test_cross.program_root_dir)

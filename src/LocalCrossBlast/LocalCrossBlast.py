@@ -49,11 +49,15 @@ class LocalCrossBlast:
 			raise Exception("Initial query is not empty (for some reason)")
 
 	"""
-	Queries the blast server for the initial query results
+	Queries the blast server for the initial query results and saves the
+	results in a CSV file
 	"""
 	def perform_initial_query(self):
 
-		pass
+		if self.initial_query is not None:
+
+			self.initial_query.query_blast_server()
+			self.initial_query.save_query_results(self.results_dir)
 
 	"""
 	Creates queries for each of the initial blast query results. This is the
@@ -81,7 +85,6 @@ class LocalCrossBlast:
 	"""
 	Returns the pwd, minus one level of depth
 	"""
-
 	def one_directory_back(self, current_directory):
 		rev_dir = current_directory[::-1]
 		rev_result = ''
@@ -93,4 +96,5 @@ class LocalCrossBlast:
 				result = rev_result[::-1]
 
 				return result
+
 

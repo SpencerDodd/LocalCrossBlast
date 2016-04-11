@@ -25,6 +25,7 @@ def main():
 
 	run_cross = LocalCrossBlast()
 	run_cross.create_fasta_file_cross_blast(new_request)
+	run_cross.perform_initial_query()
 
 if __name__ == "__main__":
 	main()

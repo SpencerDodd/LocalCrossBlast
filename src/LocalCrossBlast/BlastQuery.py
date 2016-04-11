@@ -1,6 +1,7 @@
 __author__ = "Spencer Dodd"
 
-import time
+import csv
+import datetime
 import subprocess
 from LocalBlastRequest import LocalBlastRequest
 
@@ -13,7 +14,6 @@ will additionally store the results of the query.
 
 
 class BlastQuery:
-
 	def __init__(self, blast_request):
 
 		self.query_start = "Started at ..."
@@ -21,11 +21,11 @@ class BlastQuery:
 		self.blast_request = blast_request
 		self.blast_results = None
 
-
 	"""
 	Queries the blast server with the given query's request. The results of
 	the query are stored in the Query object's blast_results field.
 	"""
+
 	def query_blast_server(self):
 
 		"""
@@ -39,13 +39,16 @@ class BlastQuery:
 			command = self.blast_request.get_query_command()
 
 			# update start time
-			self.query_start = time.strftime('%X %x %Z')
+			dt = datetime.datetime.now()
+			self.query_start = "{0}|{1}|{2}".format(dt.year, dt.month, dt.day)
 
 			self.blast_results = subprocess.Popen(command, shell=True,
 												  stdout=subprocess.PIPE).stdout
 
 			# update completion time
-			self.query_completed = time.strftime('%X %x %Z')
+			dt2 = datetime.datetime.now()
+			self.query_completed = "{0}|{1}|{2}".format(dt2.year, dt2.month,
+														dt2.day)
 
 		else:
 
@@ -54,6 +57,38 @@ class BlastQuery:
 	"""
 	Returns the database of the query's request
 	"""
+
 	def get_database(self):
 
 		return self.blast_request.get_database()
+
+	"""
+	Saves the query results to a CSV file in the given directory
+	"""
+
+	def save_query_results(self, save_dir):
+
+		print "Writing BLAST results to file for {0} ...".format(
+			self.blast_request.query_name)
+
+		save_file = save_dir + "InitialResults_{0}_{1}.csv".format(
+			self.blast_request.query_name, self.query_start)
+
+		with open(save_file, 'wb') as f:
+
+			c = csv.writer(f, delimiter=',')
+
+			for index, line in enumerate(self.blast_results):
+
+				columns = line.replace('|', "").split(',')
+
+				if index == 0:
+					c.writerow((['Query', 'Hit', 'Percent Similarity',
+								 'Distance to Common Ancestor']))
+
+				query = columns[0]
+				target = columns[1]
+				percent_sim = columns[2].replace('\n', '')
+				dist_to_common_anc = (100.0 - float(percent_sim)) / 2
+
+				c.writerow([query, target, percent_sim, dist_to_common_anc])
