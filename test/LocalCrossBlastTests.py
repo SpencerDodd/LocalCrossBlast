@@ -35,6 +35,8 @@ class LocalCrossBlastTests(unittest.TestCase):
 				self.assertTrue(test_cross.initial_query is None)
 
 				test_cross.create_fasta_file_cross_blast(test_request)
+				test_cross.perform_initial_query()
+				test_cross.cross_blast_results()
 
 				self.assertTrue(test_cross.initial_query is not None)
 

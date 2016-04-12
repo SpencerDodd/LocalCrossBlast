@@ -20,6 +20,7 @@ class BlastQuery:
 		self.query_completed = "Ongoing ..."
 		self.blast_request = blast_request
 		self.blast_results = None
+		self.blast_results_array = []
 
 	"""
 	Queries the blast server with the given query's request. The results of
@@ -39,16 +40,29 @@ class BlastQuery:
 			command = self.blast_request.get_query_command()
 
 			# update start time
-			dt = datetime.datetime.now()
-			self.query_start = "{0}|{1}|{2}".format(dt.year, dt.month, dt.day)
+			dt = datetime.datetime.today()
+			hour = dt.time().hour
+			minute = dt.time().minute
+			second = dt.time().second
+			self.query_start = "{0}|{1}|{2}_{3}hour_{4}min_{5}sec".format(dt.year, dt.month, dt.day, hour, minute, second)
+
+			print "performing: {0}".format(command)
 
 			self.blast_results = subprocess.Popen(command, shell=True,
 												  stdout=subprocess.PIPE).stdout
 
+			# save the data from the request
+			for result in self.blast_results:
+				result_data = result.replace('|', "").split(',')
+				self.blast_results_array.append(result_data)
+
 			# update completion time
 			dt2 = datetime.datetime.now()
-			self.query_completed = "{0}|{1}|{2}".format(dt2.year, dt2.month,
-														dt2.day)
+			hour2 = dt2.time().hour
+			minute2 = dt2.time().minute
+			second2 = dt2.time().second
+			self.query_completed = "{0}|{1}|{2}_{3}hour_{4}min_{5}sec".format(dt2.year, dt2.month,
+														dt2.day, hour2, minute2, second2)
 
 		else:
 
@@ -66,29 +80,45 @@ class BlastQuery:
 	Saves the query results to a CSV file in the given directory
 	"""
 
-	def save_query_results(self, save_dir):
+	def save_query_results(self, save_dir, query_type):
+
+		save_name = ""
+
+		if query_type == 'initial':
+			save_name = "InitialResults_{0}_{1}.csv".format(
+				self.blast_request.query_name, self.query_start)
+		elif query_type == 'cross':
+			save_name = "CrossResults_{0}_{1}.csv".format(
+				self.blast_request.query_name, self.query_start)
+		else:
+			save_name = "UnknownQueryType_{0}_{1}.csv".format(
+				self.blast_request.query_name, self.query_start)
 
 		print "Writing BLAST results to file for {0} ...".format(
 			self.blast_request.query_name)
 
-		save_file = save_dir + "InitialResults_{0}_{1}.csv".format(
-			self.blast_request.query_name, self.query_start)
+		save_file = save_dir + save_name
 
 		with open(save_file, 'wb') as f:
 
 			c = csv.writer(f, delimiter=',')
 
-			for index, line in enumerate(self.blast_results):
+			for index, line in enumerate(self.blast_results_array):
 
-				columns = line.replace('|', "").split(',')
+				print index, line
 
 				if index == 0:
 					c.writerow((['Query', 'Hit', 'Percent Similarity',
-								 'Distance to Common Ancestor']))
+								 'Distance to Common Ancestor', 'Hit Seq',
+								 'Hit Seq Len (bp)']))
 
-				query = columns[0]
-				target = columns[1]
-				percent_sim = columns[2].replace('\n', '')
+				query = line[0]
+				target = line[1]
+				percent_sim = line[2].replace('\n', '')
 				dist_to_common_anc = (100.0 - float(percent_sim)) / 2
+				hit_seq = line[3]
+				hit_len = len(hit_seq)
 
-				c.writerow([query, target, percent_sim, dist_to_common_anc])
+				c.writerow([query, target, percent_sim, dist_to_common_anc, hit_seq, hit_len])
+
+		return save_dir + save_name

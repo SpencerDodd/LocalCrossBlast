@@ -1,6 +1,7 @@
 __author__ = "Spencer Dodd"
 
 from LocalBlastRequest import LocalBlastRequest
+from AuxillaryMethods import AuxillaryMethods
 
 """
 Class to represent a LocalBlastRequest that will be made with a given FASTA-
@@ -17,6 +18,7 @@ class FastaStringRequest(LocalBlastRequest):
 	def __init__(self, *args, **kwargs):
 
 		LocalBlastRequest.__init__(self, *args)
+		self.save_path = kwargs.get("save_path") + self.query_name + ".txt"
 		self.query_sequence = kwargs.get("query_sequence")
 
 	"""
@@ -24,6 +26,8 @@ class FastaStringRequest(LocalBlastRequest):
 	"""
 	def get_query_command(self):
 
-		raise Exception("Need to write seq string to file and use file.")
+		AuxillaryMethods().save_fasta_file(self.save_path, self.query_name, self.query_sequence)
 
-		query_command = "{0} -query {1} -db {2} -outfmt '10 qacc sacc pident'".format(self.algorithm_type, self.file_path, self.database)
+		query_command = "{0} -query {1} -db {2} -outfmt '10 qacc sacc pident sseq'".format(self.algorithm_type, self.save_path, self.database)
+
+		return query_command

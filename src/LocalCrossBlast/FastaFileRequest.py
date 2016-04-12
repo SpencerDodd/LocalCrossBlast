@@ -24,6 +24,6 @@ class FastaFileRequest(LocalBlastRequest):
 	"""
 	def get_query_command(self):
 
-		query_command = "{0} -query '{1}' -db {2} -outfmt '10 qacc sacc pident'".format(self.algorithm_type, self.file_path, self.database)
+		query_command = "{0} -query '{1}' -db {2} -outfmt '10 qacc sacc pident sseq'".format(self.algorithm_type, self.file_path, self.database)
 
 		return query_command
