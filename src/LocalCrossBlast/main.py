@@ -17,6 +17,7 @@ def main():
 	root = Tkinter.Tk()
 	root.withdraw()
 	query_file_path = tkFileDialog.askopenfilename()
+	root.destroy()
 	# -------------------
 
 	# create the request

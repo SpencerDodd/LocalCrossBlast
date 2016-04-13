@@ -30,7 +30,7 @@ class LocalCrossBlast:
 
 		self.program_root_dir = self.one_directory_back(os.getcwd())
 		self.results_dir = self.program_root_dir + "results/Run_at_{0}hour_{1}min_{2}sec_on_{3}_{4}_{5}/".format(run_hour, run_minute, run_second, run_year, run_month, run_day)
-		self.temp_save_path = self.results_dir + "cross_seqs/"
+		self.temp_save_path = self.results_dir + "genus_fasta_seqs/"
 		self.query_database = None
 		self.initial_query = None
 		self.initial_query_result_path = None
