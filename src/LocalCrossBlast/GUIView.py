@@ -34,6 +34,7 @@ class GUIView(Frame):
 
 
 		self.initUI()
+		self.check_percentage()
 
 	def initUI(self):
 
@@ -84,7 +85,7 @@ class GUIView(Frame):
 		pb_hd = Progressbar(frame4, orient='horizontal', mode='determinate')
 		pb_hd['variable'] = self.int_var
 		pb_hd.pack(expand=True, fill=BOTH, side=TOP)
-		pb_hd.start()
+		#pb_hd.start()
 
 		# fifth Frame, button frame
 		frame5 = Frame(self)
@@ -96,9 +97,9 @@ class GUIView(Frame):
 		blast_button.pack(side=RIGHT, anchor=S, padx=5, pady=5)
 
 		# sixth Frame, test frame
-		frame6 = Frame(self)
-		frame6.pack(fill=BOTH, expand=True)
-		test_label = Label(frame6, text="{0}".format(self.new_cross.current_progress()), width=14)
+		self.frame6 = Frame(self)
+		self.frame6.pack(fill=BOTH, expand=True)
+		test_label = Label(self.frame6, text="{0}".format(self.int_var.get()), width=14)
 		test_label.pack(side=LEFT, anchor=N, padx=5, pady=5)
 
 	# gets the sequence location
@@ -155,10 +156,10 @@ class GUIView(Frame):
 
 	def check_percentage(self):
 
-		while True:
-			time.sleep(0.5)
-			self.int_var.set(self.new_cross.current_progress())
-			print self.int_var.get()
+		self.int_var.set(self.new_cross.current_progress())
+		self.update_idletasks()
+		self.after(1, self.check_percentage)
+
 
 
 def main():
