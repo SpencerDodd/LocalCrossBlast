@@ -28,6 +28,6 @@ class FastaStringRequest(LocalBlastRequest):
 
 		AuxillaryMethods().save_fasta_file(self.save_path, self.query_name, self.query_sequence)
 
-		query_command = "{0} -query {1} -db {2} -outfmt '10 qacc sacc pident sseq'".format(self.algorithm_type, self.save_path, self.database)
+		query_command = "{0} -query {1} -db {2} -num_threads 2 -culling_limit 1 -num_alignments 50 -outfmt '10 qacc sacc pident sseq staxids'".format(self.algorithm_type, self.save_path, self.database)
 
 		return query_command

@@ -1,4 +1,4 @@
-from Tkinter import Tk, Text, TOP, BOTH, X, N, S, E, W, LEFT, RIGHT, BOTTOM
+from Tkinter import Tk, Text, TOP, BOTH, X, N, S, E, W, LEFT, RIGHT, BOTTOM, Listbox
 from ttk import Frame, Label, Entry, Button
 import tkFileDialog
 from FastaFileRequest import FastaFileRequest
@@ -27,6 +27,13 @@ class FileQueryReturn():
 									 self.get_database_location())
 """
 
+global databases
+databases = [
+			["refseq_genomic", "refseq_genomic"],
+			["prado_db", "/Users/spencerdodd/Documents/Research/Khrapko_Lab/Mitochondrial_Genomics/Scripts/ncbi-blast-2.3.0+/db/pradodb.fsa"],
+			["full_mito_db", "/Users/spencerdodd/Documents/Research/Khrapko_Lab/Mitochondrial_Genomics/Scripts/ncbi-blast-2.3.0+/db/full_mito_db.fsa"]
+			]
+
 class GUIView(Frame):
 	def __init__(self, parent):
 		Frame.__init__(self, parent)
@@ -35,11 +42,12 @@ class GUIView(Frame):
 		self.parent = parent
 		self.query_name = ""
 		self.sequence_location = None
-		self.database_location = "/Volumes/DB/refseq_genomic"
+		self.database_location = None
 
 		self.initUI()
 
 	def initUI(self):
+
 		self.parent.title("BLAST QUERY")
 		self.pack(fill=BOTH, expand=True)
 
@@ -80,15 +88,16 @@ class GUIView(Frame):
 		frame3 = Frame(self)
 		frame3.pack(fill=X)
 
-		lbl3 = Label(frame3, text="Database Location", width=14)
-		lbl3.pack(side=LEFT, padx=5, pady=5)
+		lbl3 = Label(frame3, text="Database", width=14)
+		lbl3.pack(side=LEFT, anchor=N, padx=5, pady=5)
 
-		entry3 = Entry(frame3)
-		entry3.pack(fill=X, side=LEFT, anchor=W, padx=5, expand=True)
-		entry3.delete(0, "end")
-		entry3.insert(0, str(self.database_location))
+		listbox = Listbox(frame3, width=14, selectmode="single")
+		listbox.pack(side=LEFT, padx=5, pady=5)
 
-		browser2 = Button(frame3, text="Find DB", command=self.get_db_loc)
+		for db in databases:
+			listbox.insert("end", db[0])
+
+		browser2 = Button(frame3, text="Set DB", command=lambda listbox=listbox: self.set_db(listbox.curselection()))
 		browser2.pack(side=RIGHT, anchor=E, padx=5, pady=5)
 
 		# fourth Frame, button frame
@@ -108,8 +117,11 @@ class GUIView(Frame):
 		self.refresh_window()
 
 	# gets the database location
-	def get_db_loc(self):
-		self.database_location = tkFileDialog.askopenfilename()
+	def set_db(self, db_selection):
+
+		print db_selection
+
+		self.database_location = databases[db_selection[0]][1]
 		self.refresh_window()
 
 	def refresh_window(self):

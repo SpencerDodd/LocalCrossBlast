@@ -1,10 +1,17 @@
 __author__ = "Spencer Dodd"
 
+import sys
+print sys.path
+
 from FastaFileRequest import FastaFileRequest
 from FastaStringRequest import FastaStringRequest
 from BlastQuery import BlastQuery
 import os
 import datetime
+from Bio import Entrez
+from Bio import SeqIO
+
+Entrez.email = "dodd.s@husky.neu.edu"
 
 # GLOBAL VARIABLES
 global run_time, run_year, run_month, run_day, run_hour, run_minute, run_second
@@ -96,8 +103,17 @@ class LocalCrossBlast:
 		print "Getting genus phylogentic info ..."  # for line in results
 		for result in self.initial_query.blast_results_array:
 
-			query_name = result[0]
-			hit_name = result[1]
+			query_accession_number = result[0].split("ref")[1]
+			hit_accession_number = result[1]
+
+			query_handle = Entrez.efetch(db="nucleotide", id=query_accession_number, rettype="gb", retmode="text")
+			query_x = SeqIO.read(query_handle, 'genbank')
+			query_name = query_x.annotations['organism']
+
+			hit_handle = Entrez.efetch(db="nucleotide", id=hit_accession_number, rettype="gb", retmode="text")
+			hit_x = SeqIO.read(hit_handle, 'genbank')
+			hit_name = hit_x.annotations['organism']
+
 			hit_seq = result[3]
 			genus_prompt = "Is {0} related to {1} by genus level? (please enter 'y' or 'n': ".format(
 				query_name, hit_name)
@@ -125,7 +141,7 @@ class LocalCrossBlast:
 
 		for query in self.initial_results_to_cross:
 
-			query_name = query[0]
+			query_name = query[0].replace(" ", "_")
 			query_seq = query[1]
 
 			current_query_request = FastaStringRequest(query_name, "blastn", self.query_database,
