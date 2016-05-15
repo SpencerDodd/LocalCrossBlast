@@ -1,5 +1,6 @@
-from Tkinter import Tk, Text, TOP, BOTH, X, N, S, E, W, LEFT, RIGHT, BOTTOM, Listbox
-from ttk import Frame, Label, Entry, Button
+from Tkinter import Tk, Text, TOP, BOTH, X, N, S, E, W, LEFT, RIGHT, BOTTOM, \
+	Listbox
+from ttk import Frame, Label, Entry, Button, Progressbar
 import tkFileDialog
 from FastaFileRequest import FastaFileRequest
 from LocalCrossBlast import LocalCrossBlast
@@ -29,10 +30,13 @@ class FileQueryReturn():
 
 global databases
 databases = [
-			["refseq_genomic", "refseq_genomic"],
-			["prado_db", "/Users/spencerdodd/Documents/Research/Khrapko_Lab/Mitochondrial_Genomics/Scripts/ncbi-blast-2.3.0+/db/pradodb.fsa"],
-			["full_mito_db", "/Users/spencerdodd/Documents/Research/Khrapko_Lab/Mitochondrial_Genomics/Scripts/ncbi-blast-2.3.0+/db/full_mito_db.fsa"]
-			]
+	["refseq_genomic", "refseq_genomic"],
+	["prado_db",
+	 "/Users/spencerdodd/Documents/Research/Khrapko_Lab/Mitochondrial_Genomics/Scripts/ncbi-blast-2.3.0+/db/pradodb.fsa"],
+	["full_mito_db",
+	 "/Users/spencerdodd/Documents/Research/Khrapko_Lab/Mitochondrial_Genomics/Scripts/ncbi-blast-2.3.0+/db/full_mito_db.fsa"]
+]
+
 
 class GUIView(Frame):
 	def __init__(self, parent):
@@ -97,17 +101,26 @@ class GUIView(Frame):
 		for db in databases:
 			listbox.insert("end", db[0])
 
-		browser2 = Button(frame3, text="Set DB", command=lambda listbox=listbox: self.set_db(listbox.curselection()))
+		browser2 = Button(frame3, text="Set DB",
+						  command=lambda listbox=listbox: self.set_db(
+							  listbox.curselection()))
 		browser2.pack(side=RIGHT, anchor=E, padx=5, pady=5)
 
-		# fourth Frame, button frame
+		# fourth Frame, progress bar
 
 		frame4 = Frame(self)
 		frame4.pack(fill=BOTH, expand=True)
+		pb_hd = Progressbar(frame4, orient='horizontal', mode='determinate')
+		pb_hd.pack(expand=True, fill=BOTH, side=TOP)
 
-		close_button = Button(frame4, text="Close", command=self.quit)
+		# fifth Frame, button frame
+
+		frame5 = Frame(self)
+		frame5.pack(fill=BOTH, expand=True)
+
+		close_button = Button(frame5, text="Close", command=self.quit)
 		close_button.pack(side=RIGHT, anchor=S, padx=5, pady=5)
-		blast_button = Button(frame4, text="Run BLAST",
+		blast_button = Button(frame5, text="Run BLAST",
 							  command=self.run_query)
 		blast_button.pack(side=RIGHT, anchor=S, padx=5, pady=5)
 
@@ -152,10 +165,13 @@ class GUIView(Frame):
 		run_cross.create_fasta_file_cross_blast(new_request)
 		run_cross.perform_initial_query()
 		run_cross.cross_blast_results()
+		run_cross.parse_relevant_genus_sequences()
 
 
 def main():
 	root = Tk()
 	root.geometry("500x300+300+300")
+	# keep the window on top
+	root.attributes("-topmost", True)
 	app = GUIView(root)
 	root.mainloop()

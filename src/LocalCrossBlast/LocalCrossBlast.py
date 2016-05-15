@@ -10,6 +10,8 @@ import os
 import datetime
 from Bio import Entrez
 from Bio import SeqIO
+import glob
+import csv
 
 Entrez.email = "dodd.s@husky.neu.edu"
 
@@ -43,6 +45,8 @@ class LocalCrossBlast:
 		self.initial_query_result_path = None
 		self.initial_results_to_cross = []
 		self.cross_queries = []
+		self.cross_gids = []
+		self.cross_accessions = []
 
 		# make dirs that have not been created that the program requires
 		self.make_dir(self.results_dir)
@@ -101,31 +105,55 @@ class LocalCrossBlast:
 	def add_initial_genus_phylogenetic_info(self):
 
 		print "Getting genus phylogentic info ..."  # for line in results
-		for result in self.initial_query.blast_results_array:
 
-			query_accession_number = result[0].split("ref")[1]
-			hit_accession_number = result[1]
+		query_accession_number = self.initial_query.blast_results_array[0][0].split("ref")[1]
+		query_handle = Entrez.efetch(db="nucleotide", id=query_accession_number, rettype="gb", retmode="text")
+		query_x = SeqIO.read(query_handle, 'genbank')
+		query_name = query_x.annotations['organism']
 
-			query_handle = Entrez.efetch(db="nucleotide", id=query_accession_number, rettype="gb", retmode="text")
-			query_x = SeqIO.read(query_handle, 'genbank')
-			query_name = query_x.annotations['organism']
+		for index, result in enumerate(self.initial_query.blast_results_array):
 
-			hit_handle = Entrez.efetch(db="nucleotide", id=hit_accession_number, rettype="gb", retmode="text")
-			hit_x = SeqIO.read(hit_handle, 'genbank')
-			hit_name = hit_x.annotations['organism']
+			try:
+				hit_accession_number = result[1]
+				hit_handle = Entrez.efetch(db="nucleotide", id=hit_accession_number, rettype="gb", retmode="text")
+				hit_x = SeqIO.read(hit_handle, 'genbank')
+				hit_name = hit_x.annotations['organism']
+				hit_seq = result[4]
+				hit_seq_length = len(result[4])
 
-			hit_seq = result[3]
-			genus_prompt = "Is {0} related to {1} by genus level? (please enter 'y' or 'n': ".format(
-				query_name, hit_name)
+				query_genus = query_name.split(" ")[0]
+				hit_genus = hit_name.split(" ")[0]
 
-			is_genus_level = raw_input(genus_prompt)
+				num_of_hits = len(self.initial_query.blast_results_array)
+				percent_complete = (index * 1.0 / num_of_hits * 100)
 
-			print is_genus_level
+				print "comparing: {0} | {1} {2}{3}/{4} {5}%".format(query_genus, hit_genus, " "*(50 - (len(query_genus) + len(hit_genus))), index,num_of_hits, percent_complete)
 
-			if is_genus_level == "y":
-				self.initial_results_to_cross.append([hit_name, hit_seq])
-			else:
-				break
+				if query_genus == hit_genus and hit_seq_length > 15000:
+					print "Adding relation: {0} | {1}".format(query_name, hit_name)
+					self.initial_results_to_cross.append([hit_name, hit_seq])
+					self.cross_gids.append(result[2])
+					self.cross_accessions.append(result[1])
+
+					# TODO TODO TODO TODO
+					# fix so that cross blasts work off of a gilist compiled
+					# by the self.cross_gids that is built in this step
+
+					# potential option is as follows
+					#	- compile list of GIDs into a txt file in .../bin/blastn
+					#	- blastdb_aliastool -gilist XXXXXXXX.gi_list.txt -db refseq_genomic -out refseq_query_db -title refseq_query_db
+					#	- use ^^^ database for crossblasting
+					# PROBLEMS ^^^^: Segmentation Fault: 11 on aliastool db creation
+					#	- additionally, gi_list.txt needs to be in /bin/..kind of
+					#		annoying
+
+					# another potential fix:
+					#	remove unwanted sequences from the results file before
+					#	performing analysis
+					# TODO TODO TODO TODO
+			except:
+
+				print "Connection error: Retrying ..."
 
 
 	"""
@@ -156,6 +184,64 @@ class LocalCrossBlast:
 
 			cross_query.query_blast_server()
 			cross_query.save_query_results(self.results_dir, 'cross')
+
+
+	"""
+	As the CrossBlast currently cannot be performed on just the relevant
+	sequences (at the genus level), we will be removing all sequences that are
+	not of the GIDs stored in self.cross_gids from the results.
+	"""
+
+
+	def parse_relevant_genus_sequences(self):
+		# INPUT
+		# self.results_dir
+		# self.cross_accessions
+
+		# OUTPUT
+		# csv in results dir with all relevant results
+
+		result_rows = []
+		search_term = self.results_dir + "/*.csv"
+
+		for r_file in glob.glob(search_term):
+
+			# check if file is CSV
+			# read file
+			# write results that have one of the self.cross_accessions into
+			# ---- new results file (FINAL RESULTS)
+			# process the results
+			with open(r_file, "rb") as csvfile:
+
+				result_reader = csv.reader(csvfile, delimiter=',')
+
+				for row in result_reader:
+
+					hit_accession = row[1]
+
+					for acc in self.cross_accessions:
+
+						if hit_accession == acc:
+
+							result_rows.append(row)
+
+
+		# save the results to a new file
+
+		final_csv_path = self.results_dir + "/FINAL_RESULTS.csv"
+
+		with open(final_csv_path, 'wb') as final_csv:
+
+			c = csv.writer(final_csv, delimiter=',')
+
+			for row in result_rows:
+
+				if row[5] > 13500:
+
+					c.writerow([row[0],row[1],row[2],row[3],row[5],row[4]])
+
+			final_csv.close()
+
 
 
 	# --------------------------- HELPER METHODS ------------------------------
