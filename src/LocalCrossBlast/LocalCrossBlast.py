@@ -48,6 +48,10 @@ class LocalCrossBlast:
 		self.cross_gids = []
 		self.cross_accessions = []
 
+		# for output percentage
+		self.genus_lookup_index = 0
+		self.genus_hits_to_search = 1
+
 		# make dirs that have not been created that the program requires
 		self.make_dir(self.results_dir)
 		self.make_dir(self.temp_save_path)
@@ -105,6 +109,7 @@ class LocalCrossBlast:
 	def add_initial_genus_phylogenetic_info(self):
 
 		print "Getting genus phylogentic info ..."  # for line in results
+		self.genus_hits_to_search = len(self.initial_query.blast_results_array)
 
 		query_accession_number = self.initial_query.blast_results_array[0][0].split("ref")[1]
 		query_handle = Entrez.efetch(db="nucleotide", id=query_accession_number, rettype="gb", retmode="text")
@@ -112,6 +117,8 @@ class LocalCrossBlast:
 		query_name = query_x.annotations['organism']
 
 		for index, result in enumerate(self.initial_query.blast_results_array):
+
+			self.genus_lookup_index = index
 
 			try:
 				hit_accession_number = result[1]
@@ -236,12 +243,31 @@ class LocalCrossBlast:
 
 			for row in result_rows:
 
-				if row[5] > 13500:
+				if int(row[5]) > 13500:
 
 					c.writerow([row[0],row[1],row[2],row[3],row[5],row[4]])
 
 			final_csv.close()
 
+	"""
+	Returns the current progress of the blast for the progress bar
+	"""
+
+	def current_progress(self):
+
+		return ((self.genus_lookup_index * 1.0) / self.genus_hits_to_search) * 100
+
+
+	"""
+	Takes in a new request and runs the CrossBlast
+	"""
+
+	def run_cross(self, new_request):
+
+		self.create_fasta_file_cross_blast(new_request)
+		self.perform_initial_query()
+		self.cross_blast_results()
+		self.parse_relevant_genus_sequences()
 
 
 	# --------------------------- HELPER METHODS ------------------------------
