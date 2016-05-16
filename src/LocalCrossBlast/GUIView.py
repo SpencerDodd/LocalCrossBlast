@@ -7,7 +7,6 @@ from FastaFileRequest import FastaFileRequest
 from LocalCrossBlast import LocalCrossBlast
 import threading
 import os
-import time
 
 global databases
 databases = [

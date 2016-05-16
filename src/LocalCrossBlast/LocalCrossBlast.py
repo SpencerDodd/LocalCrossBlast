@@ -11,6 +11,7 @@ import glob
 import csv
 import matplotlib.pyplot as plt
 import numpy as np
+import traceback
 
 Entrez.email = "dodd.s@husky.neu.edu"
 
@@ -135,8 +136,9 @@ class LocalCrossBlast:
 										 rettype="gb", retmode="text")
 			query_x = SeqIO.read(query_handle, 'genbank')
 			query_name = query_x.annotations['organism']
-		except Exception as e:
-			print "Error: {0}".format(e)
+		except:
+			print "Problem connecting to Entrez. Retrying ..."
+			print traceback.print_exc()
 			self.add_initial_genus_phylogenetic_info()
 
 		for index, result in enumerate(self.initial_query.blast_results_array):
