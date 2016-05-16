@@ -12,6 +12,8 @@ from Bio import Entrez
 from Bio import SeqIO
 import glob
 import csv
+import matplotlib.pyplot as plt
+import numpy as np
 
 Entrez.email = "dodd.s@husky.neu.edu"
 
@@ -51,6 +53,9 @@ class LocalCrossBlast:
 		# for output percentage
 		self.genus_lookup_index = 0
 		self.genus_hits_to_search = 1
+
+		# for data analysis
+		self.genus_distances = []
 
 		# make dirs that have not been created that the program requires
 		self.make_dir(self.results_dir)
@@ -249,6 +254,35 @@ class LocalCrossBlast:
 
 			final_csv.close()
 
+
+	"""
+	Performs histogram analysis for genus related data
+	"""
+
+	def analyze_genus_data(self):
+
+		final_csv_path = self.results_dir + "/FINAL_RESULTS.csv"
+
+		with open(final_csv_path, "rb") as final_csv_file:
+
+			reader = csv.reader(final_csv_file, delimiter = ',')
+
+			for row in reader:
+
+				print row
+				self.genus_distances.append(float(row[3]))
+
+		bin_max = 10
+		bins = np.linspace(0, bin_max, 200)
+		colors = ['dodgerblcolorue']
+		plt.hist(self.genus_distances, bins, alpha = 0.5, label = '{0} (Range: {1} to {2})'.format('Genus', min(self.genus_distances), max(self.genus_distances)))
+
+		plt.ylabel('Frequency')
+		plt.xlabel('Percent dist to common ancestor')
+		plt.title('Overview')
+		plt.legend(loc = 'upper right')
+		plt.savefig('{0}/Overview.png'.format(self.results_dir))
+
 	"""
 	Returns the current progress of the blast for the progress bar
 	"""
@@ -268,6 +302,7 @@ class LocalCrossBlast:
 		self.perform_initial_query()
 		self.cross_blast_results()
 		self.parse_relevant_genus_sequences()
+		self.analyze_genus_data()
 
 
 	# --------------------------- HELPER METHODS ------------------------------

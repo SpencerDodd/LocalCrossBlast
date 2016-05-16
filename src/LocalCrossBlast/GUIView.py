@@ -38,7 +38,7 @@ class GUIView(Frame):
 
 	def initUI(self):
 
-		self.parent.title("BLAST QUERY")
+		self.parent.title("CROSS BLAST - Spencer Dodd (C) 2016")
 		self.pack(fill=BOTH, expand=True)
 
 		# first frame, query name input
@@ -96,11 +96,13 @@ class GUIView(Frame):
 							  command=self.run_query_threaded)
 		blast_button.pack(side=RIGHT, anchor=S, padx=5, pady=5)
 
+		"""
 		# sixth Frame, test frame
 		self.frame6 = Frame(self)
 		self.frame6.pack(fill=BOTH, expand=True)
 		test_label = Label(self.frame6, text="{0}".format(self.int_var.get()), width=14)
 		test_label.pack(side=LEFT, anchor=N, padx=5, pady=5)
+		"""
 
 	# gets the sequence location
 	def get_seq_loc(self):
@@ -157,7 +159,7 @@ class GUIView(Frame):
 	def check_percentage(self):
 
 		self.int_var.set(self.new_cross.current_progress())
-		self.update_idletasks()
+		#self.frame6.update()
 		self.after(1, self.check_percentage)
 
 
