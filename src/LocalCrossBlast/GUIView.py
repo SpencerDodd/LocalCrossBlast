@@ -6,6 +6,7 @@ import tkFileDialog
 from FastaFileRequest import FastaFileRequest
 from LocalCrossBlast import LocalCrossBlast
 import threading
+import os
 import time
 
 global databases
@@ -21,6 +22,9 @@ databases = [
 # TODO
 #	1. add a selection mode where a folder containing sequences can be
 #		selected and all sequences inside the folder will be crossblasted
+#	2. multithreading with deco to run more than 1 BLAST at once
+#		- will likely need to be careful however, as program is very
+#		resource intensive
 
 class GUIView(Frame):
 	def __init__(self, parent):
@@ -35,6 +39,8 @@ class GUIView(Frame):
 		self.new_crosses = []
 		self.active_cross = IntVar(self)
 		self.int_var = IntVar(self)
+		self.folder_run = False
+		self.folder_location = ""
 
 		self.initUI()
 
@@ -42,6 +48,19 @@ class GUIView(Frame):
 
 		self.parent.title("CROSS BLAST")
 		self.pack(fill=BOTH, expand=True)
+
+		# first frame, sequence folder input
+		frame0 = Frame(self)
+		frame0.pack(fill=X)
+		lbl0 = Label(frame0, text="Seq Folder BLAST", width=14)
+		lbl0.pack(side=LEFT, padx=5, pady=5)
+		entry0 = Entry(frame0)
+		entry0.pack(fill=X, side=LEFT, anchor=W, padx=5, expand=True)
+		entry0.delete(0, "end")
+		entry0.insert(0, str(self.folder_location))
+		browser = Button(frame0, text="Find Seq Folder", command=self.get_seq_folder_loc)
+		browser.pack(side=RIGHT, anchor=E, padx=5, pady=5)
+
 
 		# first frame, query name input
 		frame1 = Frame(self)
@@ -113,13 +132,18 @@ class GUIView(Frame):
 		# sixth Frame, copyright frame
 		self.frame6 = Frame(self)
 		self.frame6.pack(fill=BOTH, expand=True)
-		test_label = Label(self.frame6, text="© Spencer Dodd 2016 {0}".format(
-			self.active_cross.get()))
+		test_label = Label(self.frame6, text="© Spencer Dodd 2016")
 		test_label.pack(side=RIGHT, anchor=N, padx=5, pady=5)
+
+	# gets the location of a folder holding sequences
+	def get_seq_folder_loc(self):
+		self.folder_location = tkFileDialog.askdirectory(parent=self)
+		self.refresh_window()
+		self.folder_run = True
 
 	# gets the sequence location
 	def get_seq_loc(self):
-		self.sequence_location = tkFileDialog.askopenfilename()
+		self.sequence_location = tkFileDialog.askopenfilename(parent=self)
 		self.refresh_window()
 
 	# gets the database location
@@ -146,23 +170,52 @@ class GUIView(Frame):
 		self.active_cross = active_index
 
 	def add_blast(self):
-		print "--------------- BLAST DATA ---------------"
-		print self.query_name
-		print self.sequence_location
-		print self.database_location
-		print "----------------------------------------------"
 
-		# create the request
-		new_request = FastaFileRequest(self.query_name, "blastn",
-									   self.database_location,
-									   file_path=self.sequence_location)
+		if not self.folder_run:
+			print "--------------- BLAST DATA ---------------"
+			print self.query_name
+			print self.sequence_location
+			print self.database_location
+			print "----------------------------------------------"
 
-		new_cross_blast = LocalCrossBlast()
-		new_cross_blast.create_fasta_file_cross_blast(new_request)
-		new_cross_blast.set_id_number(len(self.new_crosses))
-		self.new_crosses.append(new_cross_blast)
+			# create the request
+			new_request = FastaFileRequest(self.query_name, "blastn",
+										   self.database_location,
+										   file_path=self.sequence_location)
 
-		self.refresh_window()
+			new_cross_blast = LocalCrossBlast()
+			new_cross_blast.create_fasta_file_cross_blast(new_request)
+			new_cross_blast.set_id_number(len(self.new_crosses))
+			self.new_crosses.append(new_cross_blast)
+
+			self.refresh_window()
+		else:
+
+			seq_files = self.filter_seq_files(os.listdir(self.folder_location))
+
+			for sequence in seq_files:
+
+				if ".FASTA" in sequence:
+
+					seq_file_path = self.folder_location + "/" + sequence
+					seq_name = sequence.replace(".FASTA", "").replace(" ", "_")
+
+					seq_request = FastaFileRequest(seq_name, "blastn",
+												   self.database_location,
+												   file_path=seq_file_path)
+
+					seq_cross_blast = LocalCrossBlast()
+					seq_cross_blast.create_fasta_file_cross_blast(seq_request)
+					seq_cross_blast.set_id_number(len(self.new_crosses))
+					self.new_crosses.append(seq_cross_blast)
+
+			self.refresh_window()
+
+
+
+	def filter_seq_files(self, list_seq_dir):
+
+		return list_seq_dir
 
 	def run_query(self):
 		for query in self.new_crosses:
@@ -202,7 +255,7 @@ class GUIView(Frame):
 
 def main():
 	root = Tk()
-	root.geometry("700x530+400+100")
+	root.geometry("700x570+400+100")
 	root.attributes("-topmost", True)
 	app = GUIView(root)
 	root.mainloop()

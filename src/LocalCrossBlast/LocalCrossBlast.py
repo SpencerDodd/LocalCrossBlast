@@ -124,15 +124,20 @@ class LocalCrossBlast:
 
 	def add_initial_genus_phylogenetic_info(self):
 
-		print "Getting genus phylogentic info ..."  # for line in results
-		self.genus_hits_to_search = len(self.initial_query.blast_results_array)
-		query_first_column = self.initial_query.blast_results_array[0][0]
-		self.get_accession_from_sequence_title(query_first_column)
-		query_handle = Entrez.efetch(db="nucleotide",
-									 id=self.query_accession_number,
-									 rettype="gb", retmode="text")
-		query_x = SeqIO.read(query_handle, 'genbank')
-		query_name = query_x.annotations['organism']
+		try:
+
+			print "Getting genus phylogentic info ..."  # for line in results
+			self.genus_hits_to_search = len(self.initial_query.blast_results_array)
+			query_first_column = self.initial_query.blast_results_array[0][0]
+			self.get_accession_from_sequence_title(query_first_column)
+			query_handle = Entrez.efetch(db="nucleotide",
+										 id=self.query_accession_number,
+										 rettype="gb", retmode="text")
+			query_x = SeqIO.read(query_handle, 'genbank')
+			query_name = query_x.annotations['organism']
+		except Exception as e:
+			print "Error: {0}".format(e)
+			self.add_initial_genus_phylogenetic_info()
 
 		for index, result in enumerate(self.initial_query.blast_results_array):
 
