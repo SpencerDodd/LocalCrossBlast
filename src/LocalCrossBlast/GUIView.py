@@ -1,4 +1,5 @@
-from Tkinter import Tk, Text, TOP, BOTH, X, N, S, E, W, LEFT, RIGHT, BOTTOM, \
+# -*- coding: utf-8 -*-
+from Tkinter import Tk, Text, TOP, BOTH, X, Y, N, S, E, W, LEFT, RIGHT, BOTTOM, \
 	Listbox, IntVar
 from ttk import Frame, Label, Entry, Button, Progressbar
 import tkFileDialog
@@ -26,19 +27,16 @@ class GUIView(Frame):
 		self.query_name = ""
 		self.sequence_location = None
 		self.database_location = None
-		self.new_cross = LocalCrossBlast()
+		# for handling
+		self.new_crosses = []
+		self.active_cross = IntVar(self)
 		self.int_var = IntVar(self)
 
-		# threading
-		self.secondary_thread = None
-
-
 		self.initUI()
-		self.check_percentage()
 
 	def initUI(self):
 
-		self.parent.title("CROSS BLAST - Spencer Dodd (C) 2016")
+		self.parent.title("CROSS BLAST")
 		self.pack(fill=BOTH, expand=True)
 
 		# first frame, query name input
@@ -82,10 +80,22 @@ class GUIView(Frame):
 		# fourth Frame, progress bar
 		frame4 = Frame(self)
 		frame4.pack(fill=X)
+		label0 = Label(frame4, text="Blast Queries", width=14)
+		label0.pack(side=LEFT, anchor=N, padx=5, pady=5)
+		self.listbox0 = Listbox(frame4, width=14, selectmode="single")
+		self.listbox0.pack(side=LEFT, padx=5, pady=5)
+		for cross_blast in self.new_crosses:
+			self.listbox0.insert("end", cross_blast.get_query_name())
 		pb_hd = Progressbar(frame4, orient='horizontal', mode='determinate')
 		pb_hd['variable'] = self.int_var
 		pb_hd.pack(expand=True, fill=BOTH, side=TOP)
-		#pb_hd.start()
+
+		# fifth Frame, add blast frame
+		self.frame_blast = Frame(self)
+		self.frame_blast.pack(fill=X)
+		add_button = Button(self.frame_blast, text="Add BLAST",
+							command=self.add_blast)
+		add_button.pack(side=RIGHT, anchor=N, padx=5, pady=5)
 
 		# fifth Frame, button frame
 		frame5 = Frame(self)
@@ -96,13 +106,11 @@ class GUIView(Frame):
 							  command=self.run_query_threaded)
 		blast_button.pack(side=RIGHT, anchor=S, padx=5, pady=5)
 
-		"""
-		# sixth Frame, test frame
+		# sixth Frame, copyright frame
 		self.frame6 = Frame(self)
 		self.frame6.pack(fill=BOTH, expand=True)
-		test_label = Label(self.frame6, text="{0}".format(self.int_var.get()), width=14)
-		test_label.pack(side=LEFT, anchor=N, padx=5, pady=5)
-		"""
+		test_label = Label(self.frame6, text="© Spencer Dodd 2016 {0}".format(self.active_cross.get()))
+		test_label.pack(side=RIGHT, anchor=N, padx=5, pady=5)
 
 	# gets the sequence location
 	def get_seq_loc(self):
@@ -113,7 +121,6 @@ class GUIView(Frame):
 	def set_db(self, db_selection):
 
 		if len(db_selection) > 0:
-
 			print db_selection
 
 			self.database_location = databases[db_selection[0]][1]
@@ -131,9 +138,12 @@ class GUIView(Frame):
 		self.query_name = name
 		self.refresh_window()
 
-	def run_query(self):
+	def set_active_cross(self, active_index):
+		self.active_cross = active_index
 
-		print "--------------- SELECTION DATA ---------------"
+	def add_blast(self):
+
+		print "--------------- BLAST DATA ---------------"
 		print self.query_name
 		print self.sequence_location
 		print self.database_location
@@ -141,10 +151,21 @@ class GUIView(Frame):
 
 		# create the request
 		new_request = FastaFileRequest(self.query_name, "blastn",
-									self.database_location,
-									file_path=self.sequence_location)
+									   self.database_location,
+									   file_path=self.sequence_location)
 
-		self.new_cross.run_cross(new_request)
+		new_cross_blast = LocalCrossBlast()
+		new_cross_blast.create_fasta_file_cross_blast(new_request)
+		new_cross_blast.set_id_number(len(self.new_crosses))
+		self.new_crosses.append(new_cross_blast)
+
+		self.refresh_window()
+
+	def run_query(self):
+
+		for query in self.new_crosses:
+
+			query.run_cross()
 
 	def run_query_threaded(self):
 
@@ -156,18 +177,35 @@ class GUIView(Frame):
 		self.tertiary_thread = threading.Thread(target=self.check_percentage)
 		self.tertiary_thread.start()
 
+	def set_active_cross_value(self):
+
+		if len(self.listbox0.curselection()) < 1:
+			self.active_cross.set(0)
+
+		else:
+			self.active_cross.set(self.listbox0.curselection()[0])
+
+
 	def check_percentage(self):
 
-		self.int_var.set(self.new_cross.current_progress())
-		#self.frame6.update()
-		self.after(1, self.check_percentage)
+		self.set_active_cross_value()
 
+		if len(self.new_crosses) > 0:
+
+			current_cross = self.new_crosses[self.active_cross.get()]
+			self.int_var.set(current_cross.current_progress())
+			# self.frame6.update()
+			self.after(1, self.check_percentage)
+
+		else:
+
+			self.int_var.set(0)
+			self.after(1, self.check_percentage())
 
 
 def main():
 	root = Tk()
-	root.geometry("500x330+300+300")
-	# keep the window on top
+	root.geometry("700x530+400+100")
 	root.attributes("-topmost", True)
 	app = GUIView(root)
 	root.mainloop()

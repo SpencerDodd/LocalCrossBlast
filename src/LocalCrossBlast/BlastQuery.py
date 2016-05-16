@@ -122,3 +122,10 @@ class BlastQuery:
 				c.writerow([query, target, percent_sim, dist_to_common_anc, hit_seq, hit_len])
 
 		return save_dir + save_name
+
+	"""
+	Returns the name of the query
+	"""
+	def get_query_name(self):
+
+		return self.blast_request.get_query_name()

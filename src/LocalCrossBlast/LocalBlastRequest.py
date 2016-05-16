@@ -43,3 +43,10 @@ class LocalBlastRequest(BlastRequest):
 	def get_database(self):
 
 		return self.database
+
+	"""
+	Returns the name of the query
+	"""
+	def get_query_name(self):
+
+		return self.query_name

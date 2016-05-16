@@ -24,7 +24,6 @@ run_hour = run_time.hour
 run_minute = run_time.minute
 run_second = run_time.second
 
-
 """
 Represents the main control class for performing a local Cross Blast. Contains
 the location of the local database, the file system heirarchy for file reading
@@ -37,7 +36,8 @@ class LocalCrossBlast:
 	def __init__(self):
 
 		self.program_root_dir = self.one_directory_back(os.getcwd())
-		self.results_dir = self.program_root_dir + "results/Run_at_{0}hour_{1}min_{2}sec_on_{3}_{4}_{5}/".format(run_hour, run_minute, run_second, run_year, run_month, run_day)
+		self.results_dir = self.program_root_dir + "results/Run_at_{0}hour_{1}min_{2}sec_on_{3}_{4}_{5}/".format(
+			run_hour, run_minute, run_second, run_year, run_month, run_day)
 		self.temp_save_path = self.results_dir + "genus_fasta_seqs/"
 		self.query_database = None
 		self.initial_query = None
@@ -46,10 +46,13 @@ class LocalCrossBlast:
 		self.cross_queries = []
 		self.cross_gids = []
 		self.cross_accessions = []
+		self.query_accession_number = None
+		self.gap_in_hits = 0
 
 		# for output percentage
 		self.genus_lookup_index = 0
 		self.genus_hits_to_search = 1
+		self.id_number = None
 
 		# for data analysis
 		self.genus_distances = []
@@ -102,6 +105,10 @@ class LocalCrossBlast:
 			print "initial results at: {0}".format(
 				self.initial_query_result_path)
 
+		else:
+
+			raise Exception("THERE IS NO INITIAL QUERY")
+
 	"""
 	Sorts through the sequences in the initial results file and determines
 	which sequences are related at a genus level of relation to the query
@@ -112,9 +119,11 @@ class LocalCrossBlast:
 
 		print "Getting genus phylogentic info ..."  # for line in results
 		self.genus_hits_to_search = len(self.initial_query.blast_results_array)
-
-		query_accession_number = self.initial_query.blast_results_array[0][0].split("ref")[1]
-		query_handle = Entrez.efetch(db="nucleotide", id=query_accession_number, rettype="gb", retmode="text")
+		query_first_column = self.initial_query.blast_results_array[0][0]
+		self.get_accession_from_sequence_title(query_first_column)
+		query_handle = Entrez.efetch(db="nucleotide",
+									 id=self.query_accession_number,
+									 rettype="gb", retmode="text")
 		query_x = SeqIO.read(query_handle, 'genbank')
 		query_name = query_x.annotations['organism']
 
@@ -122,54 +131,91 @@ class LocalCrossBlast:
 
 			self.genus_lookup_index = index
 
-			try:
-				hit_accession_number = result[1]
-				hit_handle = Entrez.efetch(db="nucleotide", id=hit_accession_number, rettype="gb", retmode="text")
-				hit_x = SeqIO.read(hit_handle, 'genbank')
-				hit_name = hit_x.annotations['organism']
-				hit_seq = result[4]
-				hit_seq_length = len(result[4])
+			if self.gap_in_hits < 20:
 
-				query_genus = query_name.split(" ")[0]
-				hit_genus = hit_name.split(" ")[0]
+				try:
+					hit_accession_number = result[1]
+					hit_handle = Entrez.efetch(db="nucleotide",
+											   id=hit_accession_number,
+											   rettype="gb", retmode="text")
+					hit_x = SeqIO.read(hit_handle, 'genbank')
+					hit_name = hit_x.annotations['organism']
+					hit_seq = result[4]
+					hit_seq_length = len(result[4])
 
-				num_of_hits = len(self.initial_query.blast_results_array)
-				percent_complete = (index * 1.0 / num_of_hits * 100)
+					query_genus = query_name.split(" ")[0]
+					hit_genus = hit_name.split(" ")[0]
 
-				print "comparing: {0} | {1} {2}{3}/{4} {5}%".format(query_genus, hit_genus, " "*(50 - (len(query_genus) + len(hit_genus))), index,num_of_hits, percent_complete)
+					num_of_hits = len(self.initial_query.blast_results_array)
+					percent_complete = (index * 1.0 / num_of_hits * 100)
 
-				if query_genus == hit_genus and hit_seq_length > 15000:
-					print "Adding relation: {0} | {1}".format(query_name, hit_name)
-					self.initial_results_to_cross.append([hit_name, hit_seq])
-					self.cross_gids.append(result[2])
-					self.cross_accessions.append(result[1])
+					print "comparing: {0} | {1} {2}{3}/{4} {5}%".format(
+						query_genus, hit_genus,
+						" " * (50 - (len(query_genus) + len(hit_genus))), index,
+						num_of_hits, percent_complete)
 
-					# TODO TODO TODO TODO
-					# fix so that cross blasts work off of a gilist compiled
-					# by the self.cross_gids that is built in this step
+					if query_genus == hit_genus and hit_seq_length > 15000:
+						print "Adding relation: {0} | {1}".format(query_name,
+																  hit_name)
+						self.initial_results_to_cross.append(
+							[hit_name, hit_seq])
+						self.cross_gids.append(result[2])
+						self.cross_accessions.append(result[1])
 
-					# potential option is as follows
-					#	- compile list of GIDs into a txt file in .../bin/blastn
-					#	- blastdb_aliastool -gilist XXXXXXXX.gi_list.txt -db refseq_genomic -out refseq_query_db -title refseq_query_db
-					#	- use ^^^ database for crossblasting
-					# PROBLEMS ^^^^: Segmentation Fault: 11 on aliastool db creation
-					#	- additionally, gi_list.txt needs to be in /bin/..kind of
-					#		annoying
+						# TODO TODO TODO TODO
+						# fix so that cross blasts work off of a gilist compiled
+						# by the self.cross_gids that is built in this step
 
-					# another potential fix:
-					#	remove unwanted sequences from the results file before
-					#	performing analysis
-					# TODO TODO TODO TODO
-			except:
+						# potential option is as follows
+						#	- compile list of GIDs into a txt file in .../bin/blastn
+						#	- blastdb_aliastool -gilist XXXXXXXX.gi_list.txt -db refseq_genomic -out refseq_query_db -title refseq_query_db
+						#	- use ^^^ database for crossblasting
+						# PROBLEMS ^^^^: Segmentation Fault: 11 on aliastool db creation
+						#	- additionally, gi_list.txt needs to be in /bin/..kind of
+						#		annoying
 
-				print "Connection error: Retrying ..."
+						# another potential fix:
+						#	remove unwanted sequences from the results file before
+						#	performing analysis
+						# TODO TODO TODO TODO
 
+						self.gap_in_hits = 0
+
+					else:
+
+						self.gap_in_hits += 1
+				except:
+
+					print "Connection error: Retrying ..."
+
+			else:
+
+				pass
+
+	"""
+	"""
+
+	def get_accession_from_sequence_title(self, query_first_column):
+
+		print query_first_column
+
+		if "ref" in query_first_column:
+			self.query_accession_number = query_first_column.split("ref")[1]
+		elif "emb" in query_first_column:
+			self.query_accession_number = query_first_column.split("emb")[1]
+		elif "dbj" in query_first_column:
+			self.query_accession_number = query_first_column.split("dbj")[1]
+		elif "gb" in query_first_column:
+			self.query_accession_number = query_first_column.split("gb")[1]
+		else:
+			self.query_accession_number = "filler"
+
+		print self.query_accession_number
 
 	"""
 	Creates queries for each of the initial blast query results. This is the
 	cross-blasting section of the blast.
 	"""
-
 
 	def cross_blast_results(self):
 		print "CrossBLAST'ing results"
@@ -177,30 +223,28 @@ class LocalCrossBlast:
 		self.add_initial_genus_phylogenetic_info()
 
 		for query in self.initial_results_to_cross:
-
 			query_name = query[0].replace(" ", "_")
 			query_seq = query[1]
 
-			current_query_request = FastaStringRequest(query_name, "blastn", self.query_database,
-							   query_sequence=query_seq, save_path=self.temp_save_path)
+			current_query_request = FastaStringRequest(query_name, "blastn",
+													   self.query_database,
+													   query_sequence=query_seq,
+													   save_path=self.temp_save_path)
 
 			current_query = BlastQuery(current_query_request)
 			self.cross_queries.append(current_query)
 
 		for cross_query in self.cross_queries:
-
 			print "BLAST'ing {0}".format(cross_query.blast_request.query_name)
 
 			cross_query.query_blast_server()
 			cross_query.save_query_results(self.results_dir, 'cross')
-
 
 	"""
 	As the CrossBlast currently cannot be performed on just the relevant
 	sequences (at the genus level), we will be removing all sequences that are
 	not of the GIDs stored in self.cross_gids from the results.
 	"""
-
 
 	def parse_relevant_genus_sequences(self):
 		# INPUT
@@ -231,9 +275,7 @@ class LocalCrossBlast:
 					for acc in self.cross_accessions:
 
 						if hit_accession == acc:
-
 							result_rows.append(row)
-
 
 		# save the results to a new file
 
@@ -246,11 +288,9 @@ class LocalCrossBlast:
 			for row in result_rows:
 
 				if int(row[5]) > 13500:
-
-					c.writerow([row[0],row[1],row[2],row[3],row[5],row[4]])
+					c.writerow([row[0], row[1], row[2], row[3], row[5], row[4]])
 
 			final_csv.close()
-
 
 	"""
 	Performs histogram analysis for genus related data
@@ -261,23 +301,23 @@ class LocalCrossBlast:
 		final_csv_path = self.results_dir + "/FINAL_RESULTS.csv"
 
 		with open(final_csv_path, "rb") as final_csv_file:
-
-			reader = csv.reader(final_csv_file, delimiter = ',')
+			reader = csv.reader(final_csv_file, delimiter=',')
 
 			for row in reader:
-
 				print row
 				self.genus_distances.append(float(row[3]))
 
 		bin_max = 10
 		bins = np.linspace(0, bin_max, 200)
 		colors = ['dodgerblcolorue']
-		plt.hist(self.genus_distances, bins, alpha = 0.5, label = '{0} (Range: {1} to {2})'.format('Genus', min(self.genus_distances), max(self.genus_distances)))
+		plt.hist(self.genus_distances, bins, alpha=0.5,
+				 label='{0} (Range: {1} to {2})'.format('Genus', min(
+					 self.genus_distances), max(self.genus_distances)))
 
 		plt.ylabel('Frequency')
 		plt.xlabel('Percent dist to common ancestor')
 		plt.title('Overview')
-		plt.legend(loc = 'upper right')
+		plt.legend(loc='upper right')
 		plt.savefig('{0}/Overview.png'.format(self.results_dir))
 
 	"""
@@ -286,21 +326,44 @@ class LocalCrossBlast:
 
 	def current_progress(self):
 
-		return ((self.genus_lookup_index * 1.0) / self.genus_hits_to_search) * 100
+		return ((
+				self.genus_lookup_index * 1.0) / self.genus_hits_to_search) * 100
 
+	"""
+	Sets the current ID for this job
+	"""
+
+	def set_id_number(self, id_number):
+
+		self.id_number = id_number
+
+	"""
+	Returns the id_number of the localcrossblast
+	"""
+
+	def get_id_number(self):
+
+		return self.id_number
+
+	"""
+	Returns the name of the query
+	"""
+
+	def get_query_name(self):
+
+		return self.initial_query.get_query_name()
 
 	"""
 	Takes in a new request and runs the CrossBlast
 	"""
 
-	def run_cross(self, new_request):
+	def run_cross(self):
 
-		self.create_fasta_file_cross_blast(new_request)
-		self.perform_initial_query()
-		self.cross_blast_results()
-		self.parse_relevant_genus_sequences()
-		self.analyze_genus_data()
-
+		if self.initial_query is not None:
+			self.perform_initial_query()
+			self.cross_blast_results()
+			self.parse_relevant_genus_sequences()
+			self.analyze_genus_data()
 
 	# --------------------------- HELPER METHODS ------------------------------
 	#
@@ -309,18 +372,15 @@ class LocalCrossBlast:
 	Creates a given directory in the file system if it doesn't exist
 	"""
 
-
 	def make_dir(self, dir_to_make):
 		if not os.path.exists(dir_to_make):
 			print "Creating directory {0}".format(dir_to_make)
 
 			os.makedirs(dir_to_make)
 
-
 	"""
 	Returns the pwd, minus one level of depth
 	"""
-
 
 	def one_directory_back(self, current_directory):
 		rev_dir = current_directory[::-1]
