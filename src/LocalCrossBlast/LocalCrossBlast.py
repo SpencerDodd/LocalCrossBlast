@@ -36,9 +36,8 @@ class LocalCrossBlast:
 	def __init__(self):
 
 		self.program_root_dir = self.one_directory_back(os.getcwd())
-		self.results_dir = self.program_root_dir + "results/Run_at_{0}hour_{1}min_{2}sec_on_{3}_{4}_{5}/".format(
-			run_hour, run_minute, run_second, run_year, run_month, run_day)
-		self.temp_save_path = self.results_dir + "genus_fasta_seqs/"
+		self.results_dir = None
+		self.temp_save_path = None
 		self.query_database = None
 		self.initial_query = None
 		self.initial_query_result_path = None
@@ -56,10 +55,6 @@ class LocalCrossBlast:
 
 		# for data analysis
 		self.genus_distances = []
-
-		# make dirs that have not been created that the program requires
-		self.make_dir(self.results_dir)
-		self.make_dir(self.temp_save_path)
 
 	# ------------------------------- METHODS ---------------------------------
 	"""
@@ -98,6 +93,8 @@ class LocalCrossBlast:
 	def perform_initial_query(self):
 
 		if self.initial_query is not None:
+
+			self.make_initial_dirs(self.initial_query)
 			self.initial_query.query_blast_server()
 			self.initial_query_result_path = self.initial_query.save_query_results(
 				self.results_dir, 'initial')
@@ -108,6 +105,16 @@ class LocalCrossBlast:
 		else:
 
 			raise Exception("THERE IS NO INITIAL QUERY")
+
+	# make dirs that have not been created that the program requires
+	def make_initial_dirs(self, initial_query):
+
+		self.results_dir = self.program_root_dir + "results/Run_at_{0}hour_{1}min_{2}sec_on_{3}_{4}_{5}/".format(
+			run_hour, run_minute, run_second, run_year, run_month, initial_query.get_query_name())
+		self.temp_save_path = self.results_dir + "genus_fasta_seqs/"
+
+		self.make_dir(self.results_dir)
+		self.make_dir(self.temp_save_path)
 
 	"""
 	Sorts through the sequences in the initial results file and determines
@@ -318,7 +325,7 @@ class LocalCrossBlast:
 		plt.xlabel('Percent dist to common ancestor')
 		plt.title('Overview')
 		plt.legend(loc='upper right')
-		plt.savefig('{0}/Overview.png'.format(self.results_dir))
+		plt.savefig('{0}/Overview_{1}.png'.format(self.results_dir, self.get_query_name()))
 
 	"""
 	Returns the current progress of the blast for the progress bar

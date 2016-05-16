@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from Tkinter import Tk, Text, TOP, BOTH, X, Y, N, S, E, W, LEFT, RIGHT, BOTTOM, \
-	Listbox, IntVar
+	Listbox, IntVar, Scrollbar, VERTICAL
 from ttk import Frame, Label, Entry, Button, Progressbar
 import tkFileDialog
 from FastaFileRequest import FastaFileRequest
@@ -17,6 +17,10 @@ databases = [
 	 "/Users/spencerdodd/Documents/Research/Khrapko_Lab/Mitochondrial_Genomics/Scripts/ncbi-blast-2.3.0+/db/full_mito_db.fsa"]
 ]
 
+
+# TODO
+#	1. add a selection mode where a folder containing sequences can be
+#		selected and all sequences inside the folder will be crossblasted
 
 class GUIView(Frame):
 	def __init__(self, parent):
@@ -109,7 +113,8 @@ class GUIView(Frame):
 		# sixth Frame, copyright frame
 		self.frame6 = Frame(self)
 		self.frame6.pack(fill=BOTH, expand=True)
-		test_label = Label(self.frame6, text="© Spencer Dodd 2016 {0}".format(self.active_cross.get()))
+		test_label = Label(self.frame6, text="© Spencer Dodd 2016 {0}".format(
+			self.active_cross.get()))
 		test_label.pack(side=RIGHT, anchor=N, padx=5, pady=5)
 
 	# gets the sequence location
@@ -119,7 +124,6 @@ class GUIView(Frame):
 
 	# gets the database location
 	def set_db(self, db_selection):
-
 		if len(db_selection) > 0:
 			print db_selection
 
@@ -142,7 +146,6 @@ class GUIView(Frame):
 		self.active_cross = active_index
 
 	def add_blast(self):
-
 		print "--------------- BLAST DATA ---------------"
 		print self.query_name
 		print self.sequence_location
@@ -162,13 +165,10 @@ class GUIView(Frame):
 		self.refresh_window()
 
 	def run_query(self):
-
 		for query in self.new_crosses:
-
 			query.run_cross()
 
 	def run_query_threaded(self):
-
 		# start the query
 		self.secondary_thread = threading.Thread(target=self.run_query)
 		self.secondary_thread.start()
@@ -178,16 +178,13 @@ class GUIView(Frame):
 		self.tertiary_thread.start()
 
 	def set_active_cross_value(self):
-
 		if len(self.listbox0.curselection()) < 1:
 			self.active_cross.set(0)
 
 		else:
 			self.active_cross.set(self.listbox0.curselection()[0])
 
-
 	def check_percentage(self):
-
 		self.set_active_cross_value()
 
 		if len(self.new_crosses) > 0:
