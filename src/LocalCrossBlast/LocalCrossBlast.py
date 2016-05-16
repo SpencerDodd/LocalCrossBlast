@@ -1,8 +1,5 @@
 __author__ = "Spencer Dodd"
 
-import sys
-print sys.path
-
 from FastaFileRequest import FastaFileRequest
 from FastaStringRequest import FastaStringRequest
 from BlastQuery import BlastQuery
