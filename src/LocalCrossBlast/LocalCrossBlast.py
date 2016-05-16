@@ -111,7 +111,8 @@ class LocalCrossBlast:
 	def make_initial_dirs(self, initial_query):
 
 		self.results_dir = self.program_root_dir + "results/Run_at_{0}hour_{1}min_{2}sec_on_{3}_{4}_{5}/".format(
-			run_hour, run_minute, run_second, run_year, run_month, initial_query.get_query_name())
+			run_hour, run_minute, run_second, run_year, run_month,
+			initial_query.get_query_name())
 		self.temp_save_path = self.results_dir + "genus_fasta_seqs/"
 
 		self.make_dir(self.results_dir)
@@ -128,9 +129,14 @@ class LocalCrossBlast:
 		try:
 
 			print "Getting genus phylogentic info ..."  # for line in results
-			self.genus_hits_to_search = len(self.initial_query.blast_results_array)
+			self.genus_hits_to_search = len(
+				self.initial_query.blast_results_array)
 			query_first_column = self.initial_query.blast_results_array[0][0]
 			self.get_accession_from_sequence_title(query_first_column)
+
+			if self.query_accession_number == "cannot_parse_genus":
+				raise Exception("Cannot parse genus.. exiting")
+
 			query_handle = Entrez.efetch(db="nucleotide",
 										 id=self.query_accession_number,
 										 rettype="gb", retmode="text")
@@ -222,7 +228,7 @@ class LocalCrossBlast:
 		elif "gb" in query_first_column:
 			self.query_accession_number = query_first_column.split("gb")[1]
 		else:
-			self.query_accession_number = "filler"
+			self.query_accession_number = "cannot_parse_genus"
 
 		print self.query_accession_number
 
@@ -254,11 +260,13 @@ class LocalCrossBlast:
 			cross_query.query_blast_server()
 			cross_query.save_query_results(self.results_dir, 'cross')
 
+
 	"""
 	As the CrossBlast currently cannot be performed on just the relevant
 	sequences (at the genus level), we will be removing all sequences that are
 	not of the GIDs stored in self.cross_gids from the results.
 	"""
+
 
 	def parse_relevant_genus_sequences(self):
 		# INPUT
@@ -306,12 +314,13 @@ class LocalCrossBlast:
 
 			final_csv.close()
 
+
 	"""
 	Performs histogram analysis for genus related data
 	"""
 
-	def analyze_genus_data(self):
 
+	def analyze_genus_data(self):
 		final_csv_path = self.results_dir + "/FINAL_RESULTS.csv"
 
 		with open(final_csv_path, "rb") as final_csv_file:
@@ -332,52 +341,63 @@ class LocalCrossBlast:
 		plt.xlabel('Percent dist to common ancestor')
 		plt.title('Overview')
 		plt.legend(loc='upper right')
-		plt.savefig('{0}/Overview_{1}.png'.format(self.results_dir, self.get_query_name()))
+		plt.savefig(
+			'{0}/Overview_{1}.png'.format(self.results_dir, self.get_query_name()))
+
 
 	"""
 	Returns the current progress of the blast for the progress bar
 	"""
 
-	def current_progress(self):
 
+	def current_progress(self):
 		return ((
-				self.genus_lookup_index * 1.0) / self.genus_hits_to_search) * 100
+					self.genus_lookup_index * 1.0) / self.genus_hits_to_search) * 100
+
 
 	"""
 	Sets the current ID for this job
 	"""
 
-	def set_id_number(self, id_number):
 
+	def set_id_number(self, id_number):
 		self.id_number = id_number
+
 
 	"""
 	Returns the id_number of the localcrossblast
 	"""
 
-	def get_id_number(self):
 
+	def get_id_number(self):
 		return self.id_number
+
 
 	"""
 	Returns the name of the query
 	"""
 
-	def get_query_name(self):
 
+	def get_query_name(self):
 		return self.initial_query.get_query_name()
+
 
 	"""
 	Takes in a new request and runs the CrossBlast
 	"""
 
-	def run_cross(self):
 
+	def run_cross(self):
 		if self.initial_query is not None:
-			self.perform_initial_query()
-			self.cross_blast_results()
-			self.parse_relevant_genus_sequences()
-			self.analyze_genus_data()
+			try:
+				self.perform_initial_query()
+				self.cross_blast_results()
+				self.parse_relevant_genus_sequences()
+				self.analyze_genus_data()
+			except:
+				print "Could not get genus data. Abandoning query ..."
+
+
 
 	# --------------------------- HELPER METHODS ------------------------------
 	#
@@ -386,15 +406,18 @@ class LocalCrossBlast:
 	Creates a given directory in the file system if it doesn't exist
 	"""
 
+
 	def make_dir(self, dir_to_make):
 		if not os.path.exists(dir_to_make):
 			print "Creating directory {0}".format(dir_to_make)
 
 			os.makedirs(dir_to_make)
 
+
 	"""
 	Returns the pwd, minus one level of depth
 	"""
+
 
 	def one_directory_back(self, current_directory):
 		rev_dir = current_directory[::-1]
