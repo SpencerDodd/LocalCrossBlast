@@ -15,6 +15,9 @@ import traceback
 
 Entrez.email = "dodd.s@husky.neu.edu"
 
+# TODO
+# remove | characters from filenames to avoid cmd-line errors
+
 # GLOBAL VARIABLES
 global run_time, run_year, run_month, run_day, run_hour, run_minute, run_second
 run_time = datetime.datetime.today()
