@@ -12,6 +12,7 @@ import csv
 import matplotlib.pyplot as plt
 import numpy as np
 import traceback
+import shutil
 
 Entrez.email = "dodd.s@husky.neu.edu"
 
@@ -51,6 +52,7 @@ class LocalCrossBlast:
 		self.cross_accessions = []
 		self.query_accession_number = None
 		self.gap_in_hits = 0
+		self.mito_size_cutoff = 10000
 
 		# for output percentage
 		self.genus_lookup_index = 0
@@ -113,9 +115,14 @@ class LocalCrossBlast:
 	# make dirs that have not been created that the program requires
 	def make_initial_dirs(self, initial_query):
 
-		self.results_dir = self.program_root_dir + "results/Run_at_{0}hour_{1}min_{2}sec_on_{3}_{4}_{5}/".format(
+		self.results_dir = "/Volumes/Results/Run_at_{0}hour_{1}min_{2}sec_on_{3}_{4}_{5}/".format(
 			run_hour, run_minute, run_second, run_year, run_month,
 			initial_query.get_query_name())
+
+		# TODO TODO TODO TODO
+		"""self.program_root_dir + "results/Run_at_{0}hour_{1}min_{2}sec_on_{3}_{4}_{5}/".format(
+			run_hour, run_minute, run_second, run_year, run_month,
+			initial_query.get_query_name())"""
 		self.temp_save_path = self.results_dir + "genus_fasta_seqs/"
 
 		self.make_dir(self.results_dir)
@@ -154,7 +161,7 @@ class LocalCrossBlast:
 
 			self.genus_lookup_index = index
 
-			if self.gap_in_hits < 20:
+			if self.gap_in_hits < 30:
 
 				try:
 					hit_accession_number = result[1]
@@ -177,7 +184,7 @@ class LocalCrossBlast:
 						" " * (50 - (len(query_genus) + len(hit_genus))), index,
 						num_of_hits, percent_complete)
 
-					if query_genus == hit_genus and hit_seq_length > 15000:
+					if query_genus == hit_genus and hit_seq_length > self.mito_size_cutoff:
 						print "Adding relation: {0} | {1}".format(query_name,
 																  hit_name)
 						self.initial_results_to_cross.append(
@@ -290,10 +297,10 @@ class LocalCrossBlast:
 			# ---- new results file (FINAL RESULTS)
 			# process the results
 			with open(r_file, "rb") as csvfile:
-
 				result_reader = csv.reader(csvfile, delimiter=',')
 
 				for row in result_reader:
+
 
 					hit_accession = row[1]
 
@@ -324,28 +331,32 @@ class LocalCrossBlast:
 
 
 	def analyze_genus_data(self):
-		final_csv_path = self.results_dir + "/FINAL_RESULTS.csv"
 
-		with open(final_csv_path, "rb") as final_csv_file:
-			reader = csv.reader(final_csv_file, delimiter=',')
+		# if there are genus hits...
+		if len(self.genus_distances) > 0:
 
-			for row in reader:
-				print row
-				self.genus_distances.append(float(row[3]))
+			final_csv_path = self.results_dir + "/FINAL_RESULTS.csv"
 
-		bin_max = 10
-		bins = np.linspace(0, bin_max, 200)
-		colors = ['dodgerblcolorue']
-		plt.hist(self.genus_distances, bins, alpha=0.5,
-				 label='{0} (Range: {1} to {2})'.format('Genus', min(
-					 self.genus_distances), max(self.genus_distances)))
+			with open(final_csv_path, "rb") as final_csv_file:
+				reader = csv.reader(final_csv_file, delimiter=',')
 
-		plt.ylabel('Frequency')
-		plt.xlabel('Percent dist to common ancestor')
-		plt.title('Overview')
-		plt.legend(loc='upper right')
-		plt.savefig(
-			'{0}/Overview_{1}.png'.format(self.results_dir, self.get_query_name()))
+				for row in reader:
+					print row
+					self.genus_distances.append(float(row[3]))
+
+			bin_max = 10
+			bins = np.linspace(0, bin_max, 200)
+			colors = ['dodgerblcolorue']
+			plt.hist(self.genus_distances, bins, alpha=0.5,
+					 label='{0} (Range: {1} to {2})'.format('Genus', min(
+						 self.genus_distances), max(self.genus_distances)))
+
+			plt.ylabel('Frequency')
+			plt.xlabel('Percent dist to common ancestor')
+			plt.title('Overview')
+			plt.legend(loc='upper right')
+			plt.savefig(
+				'{0}/Overview_{1}.png'.format(self.results_dir, self.get_query_name()))
 
 
 	"""
@@ -389,6 +400,22 @@ class LocalCrossBlast:
 	Takes in a new request and runs the CrossBlast
 	"""
 
+	def remove_non_final_results(self):
+
+		all_results = os.listdir(self.results_dir)
+
+		for result in all_results:
+
+			if not "FINAL" in result and ".csv" in result:
+
+				remove_path = self.results_dir + result
+				print "removing: " + result
+				os.remove(remove_path)
+
+	def delete_failed_data(self):
+
+		shutil.rmtree(self.results_dir)
+
 
 	def run_cross(self):
 		if self.initial_query is not None:
@@ -397,8 +424,11 @@ class LocalCrossBlast:
 				self.cross_blast_results()
 				self.parse_relevant_genus_sequences()
 				self.analyze_genus_data()
-			except:
-				print "Could not get genus data. Abandoning query ..."
+				self.remove_non_final_results()
+			except Exception as e:
+				print "{0}".format(e)
+				print "Could not get genus data. Abandoning query and removing data ..."
+				self.delete_failed_data()
 
 
 

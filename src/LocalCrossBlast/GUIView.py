@@ -254,7 +254,7 @@ class GUIView(Frame):
 
 def main():
 	root = Tk()
-	root.geometry("700x570+400+100")
+	root.geometry("700x570+72500+0")
 	root.attributes("-topmost", True)
 	app = GUIView(root)
 	root.mainloop()
