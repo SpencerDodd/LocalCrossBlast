@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from Tkinter import Tk, Text, TOP, BOTH, X, Y, N, S, E, W, LEFT, RIGHT, BOTTOM, \
-	Listbox, IntVar, Scrollbar, VERTICAL
+	Listbox, IntVar, Scrollbar, VERTICAL, StringVar
 from ttk import Frame, Label, Entry, Button, Progressbar
 import tkFileDialog
 from FastaFileRequest import FastaFileRequest
@@ -40,10 +40,17 @@ class GUIView(Frame):
 		self.int_var = IntVar(self)
 		self.folder_run = False
 		self.folder_location = ""
+		self.current_cross = StringVar(self)
+		self.total_crosses = StringVar(self)
+		self.percent_complete = StringVar(self)
 
 		self.initUI()
 
 	def initUI(self):
+
+		self.set_current_cross(0)
+		self.set_total_crosses(0)
+		self.percent_complete.set(0)
 
 		self.parent.title("CROSS BLAST")
 		self.pack(fill=BOTH, expand=True)
@@ -107,10 +114,27 @@ class GUIView(Frame):
 		self.listbox0 = Listbox(frame4, width=14, selectmode="single")
 		self.listbox0.pack(side=LEFT, padx=5, pady=5)
 		for cross_blast in self.new_crosses:
+			new_cross_num = int(self.total_crosses.get())
+			new_cross_num += 1
+			self.total_crosses.set(new_cross_num)
 			self.listbox0.insert("end", cross_blast.get_query_name())
 		pb_hd = Progressbar(frame4, orient='horizontal', mode='determinate')
 		pb_hd['variable'] = self.int_var
 		pb_hd.pack(expand=True, fill=BOTH, side=TOP)
+		total_progress_bar = Progressbar(frame4, orient='horizontal', mode='determinate')
+		total_progress_bar['variable'] = self.percent_complete
+		total_progress_bar.pack(expand=True, fill=BOTH, side=TOP)
+		percent_complete_sign = Label(frame4, text="%", width=1)
+		percent_complete_sign.pack(side=RIGHT, padx=5, pady=5)
+		percent_complete_label = Label(frame4, textvariable=self.percent_complete, width=5)
+		percent_complete_label.pack(side=RIGHT, padx=5, pady=5)
+		progress_label_total = Label(frame4, textvariable=self.total_crosses, width=5)
+		progress_label_total.pack(side=RIGHT, padx=5)
+		progress_label_divider = Label(frame4, text="/", width=1)
+		progress_label_divider.pack(side=RIGHT)
+		progress_label_current = Label(frame4, textvariable=self.current_cross, width=5)
+		progress_label_current.pack(side=RIGHT, padx=5, pady=5)
+
 
 		# fifth Frame, add blast frame
 		self.frame_blast = Frame(self)
@@ -171,23 +195,28 @@ class GUIView(Frame):
 	def add_blast(self):
 
 		if not self.folder_run:
-			print "--------------- BLAST DATA ---------------"
-			print self.query_name
-			print self.sequence_location
-			print self.database_location
-			print "----------------------------------------------"
 
-			# create the request
-			new_request = FastaFileRequest(self.query_name, "blastn",
-										   self.database_location,
-										   file_path=self.sequence_location)
+			if not self.is_file_data_empty(self.sequence_location):
 
-			new_cross_blast = LocalCrossBlast()
-			new_cross_blast.create_fasta_file_cross_blast(new_request)
-			new_cross_blast.set_id_number(len(self.new_crosses))
-			self.new_crosses.append(new_cross_blast)
+				print "--------------- BLAST DATA ---------------"
+				print self.query_name
+				print self.sequence_location
+				print self.database_location
+				print "----------------------------------------------"
 
-			self.refresh_window()
+				# create the request
+				new_request = FastaFileRequest(self.query_name, "blastn",
+											   self.database_location,
+											   file_path=self.sequence_location)
+
+				new_cross_blast = LocalCrossBlast()
+				new_cross_blast.create_fasta_file_cross_blast(new_request)
+				new_cross_blast.set_id_number(len(self.new_crosses))
+				self.new_crosses.append(new_cross_blast)
+
+				self.refresh_window()
+			else:
+				print ("Seq file has no data: {0}".format(self.sequence_location))
 		else:
 
 			seq_files = self.filter_seq_files(os.listdir(self.folder_location))
@@ -197,16 +226,20 @@ class GUIView(Frame):
 				if ".FASTA" in sequence:
 
 					seq_file_path = self.folder_location + "/" + sequence
-					seq_name = sequence.replace(".FASTA", "").replace(" ", "_")
+					if not self.is_file_data_empty(seq_file_path):
+						seq_name = sequence.replace(".FASTA", "").replace(" ", "_")
 
-					seq_request = FastaFileRequest(seq_name, "blastn",
-												   self.database_location,
-												   file_path=seq_file_path)
+						seq_request = FastaFileRequest(seq_name, "blastn",
+													   self.database_location,
+													   file_path=seq_file_path)
 
-					seq_cross_blast = LocalCrossBlast()
-					seq_cross_blast.create_fasta_file_cross_blast(seq_request)
-					seq_cross_blast.set_id_number(len(self.new_crosses))
-					self.new_crosses.append(seq_cross_blast)
+						seq_cross_blast = LocalCrossBlast()
+						seq_cross_blast.create_fasta_file_cross_blast(seq_request)
+						seq_cross_blast.set_id_number(len(self.new_crosses))
+						self.new_crosses.append(seq_cross_blast)
+					else:
+
+						print ("Seq file has no data: {0}".format(seq_file_path))
 
 			self.refresh_window()
 
@@ -217,8 +250,22 @@ class GUIView(Frame):
 		return list_seq_dir
 
 	def run_query(self):
-		for query in self.new_crosses:
+		for index, query in enumerate(self.new_crosses):
+			self.set_current_cross(index + 1)
+			self.set_percent_complete()
 			query.run_cross()
+
+	def set_percent_complete(self):
+		percent_complete = float(float(self.current_cross.get()) / int(self.total_crosses.get()) * 100)
+		shortened_percent = "{0:.2f}".format(percent_complete)
+		self.percent_complete.set(shortened_percent)
+
+	def set_current_cross(self, index):
+
+		self.current_cross.set(int(index))
+
+	def set_total_crosses(self, total):
+		self.total_crosses.set(int(total))
 
 	def run_query_threaded(self):
 		# start the query
@@ -250,6 +297,16 @@ class GUIView(Frame):
 
 			self.int_var.set(0)
 			self.after(1, self.check_percentage())
+
+	def is_file_data_empty(self, file_path):
+
+		with open(file_path, "rb") as f:
+
+			f_data = f.read().split("\n")
+			if len(f_data) < 2:
+				return True
+			else:
+				return False
 
 
 def main():

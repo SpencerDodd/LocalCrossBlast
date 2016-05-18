@@ -17,7 +17,10 @@ import shutil
 Entrez.email = "dodd.s@husky.neu.edu"
 
 # TODO
-# remove | characters from filenames to avoid cmd-line errors
+# 1. change so that if a filename exists in the results directory that contains
+# 	the genus of the query, the cross blast is dropped (results already exist)
+# 2. add the accession number of the query to the results and the name of
+# 	the hit to results
 
 # GLOBAL VARIABLES
 global run_time, run_year, run_month, run_day, run_hour, run_minute, run_second
@@ -41,10 +44,13 @@ class LocalCrossBlast:
 	def __init__(self):
 
 		self.program_root_dir = self.one_directory_back(os.getcwd())
+		self.base_results_dir = "/Volumes/Results/"
 		self.results_dir = None
 		self.temp_save_path = None
 		self.query_database = None
 		self.initial_query = None
+		self.initial_genus = None
+		self.initial_name = None
 		self.initial_query_result_path = None
 		self.initial_results_to_cross = []
 		self.cross_queries = []
@@ -57,6 +63,8 @@ class LocalCrossBlast:
 		# for output percentage
 		self.genus_lookup_index = 0
 		self.genus_hits_to_search = 1
+		self.current_cross_query = 0
+		self.queries_in_cross = 1
 		self.id_number = None
 
 		# for data analysis
@@ -115,7 +123,7 @@ class LocalCrossBlast:
 	# make dirs that have not been created that the program requires
 	def make_initial_dirs(self, initial_query):
 
-		self.results_dir = "/Volumes/Results/Run_at_{0}hour_{1}min_{2}sec_on_{3}_{4}_{5}/".format(
+		self.results_dir = self.base_results_dir + "Run_at_{0}hour_{1}min_{2}sec_on_{3}_{4}_{5}/".format(
 			run_hour, run_minute, run_second, run_year, run_month,
 			initial_query.get_query_name())
 
@@ -152,16 +160,29 @@ class LocalCrossBlast:
 										 rettype="gb", retmode="text")
 			query_x = SeqIO.read(query_handle, 'genbank')
 			query_name = query_x.annotations['organism']
+			query_genus = query_name.split(" ")[0]
+
+			# save for later (checking if results already exist)
+			self.initial_name = query_name
+			self.initial_genus = query_genus
+
+
 		except:
 			print "Problem connecting to Entrez. Retrying ..."
 			print traceback.print_exc()
 			self.add_initial_genus_phylogenetic_info()
 
+		if self.query_already_made():
+
+			# for GUI
+			self.set_completion_to_100()
+			raise Exception("Query for genus already made. Aborting BLAST ...")
+
 		for index, result in enumerate(self.initial_query.blast_results_array):
 
 			self.genus_lookup_index = index
 
-			if self.gap_in_hits < 30:
+			if self.gap_in_hits < 20:
 
 				try:
 					hit_accession_number = result[1]
@@ -172,8 +193,6 @@ class LocalCrossBlast:
 					hit_name = hit_x.annotations['organism']
 					hit_seq = result[4]
 					hit_seq_length = len(result[4])
-
-					query_genus = query_name.split(" ")[0]
 					hit_genus = hit_name.split(" ")[0]
 
 					num_of_hits = len(self.initial_query.blast_results_array)
@@ -220,8 +239,34 @@ class LocalCrossBlast:
 
 			else:
 
-				pass
+				self.genus_lookup_index = self.genus_hits_to_search
 
+	"""
+	returns true if the query genus already has results in the results directory
+	"""
+
+	def query_already_made(self):
+
+		print "Checking if query has already been made"
+
+		results = [x[0] for x in os.walk(self.base_results_dir)]
+
+		self.num_of_genus_hits = 0
+
+		for result in results:
+			if self.initial_genus in result and "genus_fasta_seqs" not in result:
+				self.num_of_genus_hits += 1
+				print "{0} in | query hit: {1}".format(self.initial_genus, result)
+
+		print "number of genus hits for {0}: {1}".format(self.num_of_genus_hits, self.initial_genus)
+
+		if self.num_of_genus_hits > 1:
+
+			"Query has already been made. Exiting BLAST ..."
+			return True
+
+		"Query genus is novel. Continuing"
+		return False
 	"""
 	"""
 
@@ -252,7 +297,10 @@ class LocalCrossBlast:
 
 		self.add_initial_genus_phylogenetic_info()
 
+		self.queries_in_cross = len(self.initial_results_to_cross)
+
 		for query in self.initial_results_to_cross:
+
 			query_name = query[0].replace(" ", "_")
 			query_seq = query[1]
 
@@ -264,7 +312,10 @@ class LocalCrossBlast:
 			current_query = BlastQuery(current_query_request)
 			self.cross_queries.append(current_query)
 
-		for cross_query in self.cross_queries:
+		for index, cross_query in enumerate(self.cross_queries):
+
+			self.current_cross_query = index + 1
+
 			print "BLAST'ing {0}".format(cross_query.blast_request.query_name)
 
 			cross_query.query_blast_server()
@@ -359,14 +410,23 @@ class LocalCrossBlast:
 				'{0}/Overview_{1}.png'.format(self.results_dir, self.get_query_name()))
 
 
+	def set_completion_to_100(self):
+
+		self.genus_lookup_index = 1
+		self.genus_hits_to_search = 1
+
 	"""
 	Returns the current progress of the blast for the progress bar
 	"""
 
 
 	def current_progress(self):
-		return ((
-					self.genus_lookup_index * 1.0) / self.genus_hits_to_search) * 100
+
+		phylo_progress = ((self.genus_lookup_index * 1.0) / self.genus_hits_to_search) * 50
+		cross_blast_progress = ((self.current_cross_query * 1.0) / self.queries_in_cross) * 50
+
+		return phylo_progress + cross_blast_progress
+
 
 
 	"""
