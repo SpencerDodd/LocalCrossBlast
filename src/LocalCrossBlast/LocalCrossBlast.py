@@ -44,7 +44,7 @@ class LocalCrossBlast:
 	def __init__(self):
 
 		self.program_root_dir = self.one_directory_back(os.getcwd())
-		self.base_results_dir = "/Volumes/Results/"
+		self.base_results_dir = "/Volumes/Results/species/"
 		self.results_dir = None
 		self.temp_save_path = None
 		self.query_database = None
@@ -59,6 +59,12 @@ class LocalCrossBlast:
 		self.query_accession_number = None
 		self.gap_in_hits = 0
 		self.mito_size_cutoff = 10000
+
+		# for checking if sequence has already been blasted by this query
+		self.saved_sequences = "/Volumes/Results/species/saved_seqs/used.txt"
+
+		# for phylogenetic selection of genus{0} species{1} and subspecies {2}
+		self.phylo_check_level = 1
 
 		# for output percentage
 		self.genus_lookup_index = 0
@@ -107,6 +113,9 @@ class LocalCrossBlast:
 	def perform_initial_query(self):
 
 		if self.initial_query is not None:
+
+			if self.is_sequence_already_used(self.initial_query.get_query_sequence()):
+				raise ValueError("QUERY SEQUENCE HAS ALREADY BEEN USED")
 
 			self.make_initial_dirs(self.initial_query)
 			self.initial_query.query_blast_server()
@@ -160,7 +169,7 @@ class LocalCrossBlast:
 										 rettype="gb", retmode="text")
 			query_x = SeqIO.read(query_handle, 'genbank')
 			query_name = query_x.annotations['organism']
-			query_genus = query_name.split(" ")[0]
+			query_genus = query_name.split(" ")[self.phylo_check_level]
 
 			# save for later (checking if results already exist)
 			self.initial_name = query_name
@@ -173,10 +182,14 @@ class LocalCrossBlast:
 			self.add_initial_genus_phylogenetic_info()
 
 		if self.query_already_made():
-
 			# for GUI
 			self.set_completion_to_100()
-			raise Exception("Query for genus already made. Aborting BLAST ...")
+			raise Exception(
+				"Query for phylogenetic level already made. Aborting BLAST ...")
+
+		if not self.query_has_subspecies():
+			self.set_completion_to_100()
+			raise Exception("Query doesn't have subspecies level of definition")
 
 		for index, result in enumerate(self.initial_query.blast_results_array):
 
@@ -193,7 +206,7 @@ class LocalCrossBlast:
 					hit_name = hit_x.annotations['organism']
 					hit_seq = result[4]
 					hit_seq_length = len(result[4])
-					hit_genus = hit_name.split(" ")[0]
+					hit_genus = hit_name.split(" ")[self.phylo_check_level]
 
 					num_of_hits = len(self.initial_query.blast_results_array)
 					percent_complete = (index * 1.0 / num_of_hits * 100)
@@ -242,6 +255,19 @@ class LocalCrossBlast:
 				self.genus_lookup_index = self.genus_hits_to_search
 
 	"""
+	Returns true if the query does not have a subspecies level of definition
+	"""
+
+	def query_has_subspecies(self):
+
+		phylo = self.initial_name.split(" ")
+		print phylo
+		if len(phylo) < 3:
+			return False
+		else:
+			return True
+
+	"""
 	returns true if the query genus already has results in the results directory
 	"""
 
@@ -256,17 +282,19 @@ class LocalCrossBlast:
 		for result in results:
 			if self.initial_genus in result and "genus_fasta_seqs" not in result:
 				self.num_of_genus_hits += 1
-				print "{0} in | query hit: {1}".format(self.initial_genus, result)
+				print "{0} in | query hit: {1}".format(self.initial_genus,
+													   result)
 
-		print "number of genus hits for {0}: {1}".format(self.num_of_genus_hits, self.initial_genus)
+		print "number of genus hits for {0}: {1}".format(self.num_of_genus_hits,
+														 self.initial_genus)
 
 		if self.num_of_genus_hits > 1:
-
 			"Query has already been made. Exiting BLAST ..."
 			return True
 
 		"Query genus is novel. Continuing"
 		return False
+
 	"""
 	"""
 
@@ -295,12 +323,13 @@ class LocalCrossBlast:
 	def cross_blast_results(self):
 		print "CrossBLAST'ing results"
 
+		self.save_used_sequence(self.initial_query.get_query_sequence())
+
 		self.add_initial_genus_phylogenetic_info()
 
 		self.queries_in_cross = len(self.initial_results_to_cross)
 
 		for query in self.initial_results_to_cross:
-
 			query_name = query[0].replace(" ", "_")
 			query_seq = query[1]
 
@@ -313,7 +342,6 @@ class LocalCrossBlast:
 			self.cross_queries.append(current_query)
 
 		for index, cross_query in enumerate(self.cross_queries):
-
 			self.current_cross_query = index + 1
 
 			print "BLAST'ing {0}".format(cross_query.blast_request.query_name)
@@ -321,13 +349,11 @@ class LocalCrossBlast:
 			cross_query.query_blast_server()
 			cross_query.save_query_results(self.results_dir, 'cross')
 
-
 	"""
 	As the CrossBlast currently cannot be performed on just the relevant
 	sequences (at the genus level), we will be removing all sequences that are
 	not of the GIDs stored in self.cross_gids from the results.
 	"""
-
 
 	def parse_relevant_genus_sequences(self):
 		# INPUT
@@ -352,7 +378,6 @@ class LocalCrossBlast:
 
 				for row in result_reader:
 
-
 					hit_accession = row[1]
 
 					for acc in self.cross_accessions:
@@ -375,11 +400,9 @@ class LocalCrossBlast:
 
 			final_csv.close()
 
-
 	"""
 	Performs histogram analysis for genus related data
 	"""
-
 
 	def analyze_genus_data(self):
 
@@ -407,8 +430,8 @@ class LocalCrossBlast:
 			plt.title('Overview')
 			plt.legend(loc='upper right')
 			plt.savefig(
-				'{0}/Overview_{1}.png'.format(self.results_dir, self.get_query_name()))
-
+				'{0}/Overview_{1}.png'.format(self.results_dir,
+											  self.get_query_name()))
 
 	def set_completion_to_100(self):
 
@@ -419,42 +442,35 @@ class LocalCrossBlast:
 	Returns the current progress of the blast for the progress bar
 	"""
 
-
 	def current_progress(self):
 
-		phylo_progress = ((self.genus_lookup_index * 1.0) / self.genus_hits_to_search) * 50
-		cross_blast_progress = ((self.current_cross_query * 1.0) / self.queries_in_cross) * 50
+		phylo_progress = ((
+						  self.genus_lookup_index * 1.0) / self.genus_hits_to_search) * 50
+		cross_blast_progress = ((
+								self.current_cross_query * 1.0) / self.queries_in_cross) * 50
 
 		return phylo_progress + cross_blast_progress
-
-
 
 	"""
 	Sets the current ID for this job
 	"""
 
-
 	def set_id_number(self, id_number):
 		self.id_number = id_number
-
 
 	"""
 	Returns the id_number of the localcrossblast
 	"""
 
-
 	def get_id_number(self):
 		return self.id_number
-
 
 	"""
 	Returns the name of the query
 	"""
 
-
 	def get_query_name(self):
 		return self.initial_query.get_query_name()
-
 
 	"""
 	Takes in a new request and runs the CrossBlast
@@ -467,7 +483,6 @@ class LocalCrossBlast:
 		for result in all_results:
 
 			if not "FINAL" in result and ".csv" in result:
-
 				remove_path = self.results_dir + result
 				print "removing: " + result
 				os.remove(remove_path)
@@ -476,6 +491,34 @@ class LocalCrossBlast:
 
 		shutil.rmtree(self.results_dir)
 
+	def is_sequence_already_used(self, new_sequence):
+		new_seq_name = self.get_file_from_path(new_sequence)
+		used_seqs = []
+		with open(self.saved_sequences, "r") as saved_seqs:
+			data = saved_seqs.read()
+			used_seqs = data.split('\n')
+
+		for seq in used_seqs:
+			if seq == new_seq_name:
+				return True
+
+		return False
+
+	def save_used_sequence(self, sequence_location):
+		file_name = self.get_file_from_path(sequence_location)
+		with open(self.saved_sequences, "a") as save_file:
+			save_file.write(file_name + "\n")
+
+	def get_file_from_path(self, file_path):
+
+		rev_path = file_path[::-1]
+		file_name = ""
+		for index, c in enumerate(rev_path):
+			if c == "/":
+				file_name = rev_path[:index][::-1]
+				break
+
+		return file_name
 
 	def run_cross(self):
 		if self.initial_query is not None:
@@ -485,12 +528,14 @@ class LocalCrossBlast:
 				self.parse_relevant_genus_sequences()
 				self.analyze_genus_data()
 				self.remove_non_final_results()
+			except ValueError as e:
+				print "{0}".format(e)
+				print "Seq was already blasted by this query"
+				pass
 			except Exception as e:
 				print "{0}".format(e)
 				print "Could not get genus data. Abandoning query and removing data ..."
 				self.delete_failed_data()
-
-
 
 	# --------------------------- HELPER METHODS ------------------------------
 	#
@@ -499,18 +544,15 @@ class LocalCrossBlast:
 	Creates a given directory in the file system if it doesn't exist
 	"""
 
-
 	def make_dir(self, dir_to_make):
 		if not os.path.exists(dir_to_make):
 			print "Creating directory {0}".format(dir_to_make)
 
 			os.makedirs(dir_to_make)
 
-
 	"""
 	Returns the pwd, minus one level of depth
 	"""
-
 
 	def one_directory_back(self, current_directory):
 		rev_dir = current_directory[::-1]

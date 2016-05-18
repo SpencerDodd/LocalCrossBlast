@@ -27,3 +27,8 @@ class FastaFileRequest(LocalBlastRequest):
 		query_command = "{0} -query '{1}' -db {2} -num_threads 2 -outfmt '10 qacc sacc sgi pident sseq'".format(self.algorithm_type, self.file_path, self.database)
 
 		return query_command
+
+	def get_query_sequence(self):
+
+		print "FILE PATH: " + self.file_path
+		return self.file_path

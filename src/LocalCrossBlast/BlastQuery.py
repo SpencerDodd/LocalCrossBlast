@@ -129,3 +129,10 @@ class BlastQuery:
 	def get_query_name(self):
 
 		return self.blast_request.get_query_name()
+
+	"""
+	Returns the location of the query sequence
+	"""
+	def get_query_sequence(self):
+
+		return self.blast_request.get_query_sequence()
