@@ -1,4 +1,5 @@
 #!/bin/python
+# test for scp to remote servers !! please ignore !!
 import matplotlib.pyplot as plt
 import numpy as np
 import csv
@@ -7,7 +8,8 @@ import fnmatch
 import os
 from PIL import Image
 
-save_path = "/Users/spencerdodd/Desktop/"
+save_path = "/home/pi/Results/species_data_analytics"
+data_path = "/home/pi/Results/species"
 genus_results = []
 genus_names = []
 files = []
@@ -16,7 +18,7 @@ def analyze_genus_data():
 
 	total_genuses = 0
 
-	for root, dirnames, filenames in os.walk("/Volumes/Results/species"):
+	for root, dirnames, filenames in os.walk(data_path):
 		for filename in fnmatch.filter(filenames, "FINAL_RESULTS.csv"):
 			files.append(os.path.join(root, filename))
 			total_genuses += 1
@@ -57,7 +59,7 @@ def analyze_genus_data():
 	os.remove(save_name)
 	plt.savefig('{0}Overview_species.png'.format(save_path))
 
-	photo = Image.open(save_name)
-	photo.show()
+	#photo = Image.open(save_name)
+	#photo.show()
 
 analyze_genus_data()
