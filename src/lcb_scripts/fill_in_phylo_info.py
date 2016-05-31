@@ -3,7 +3,7 @@ import sys
 import csv
 
 """
-This script goes through a FINAL_RESULTS.csv file and finds the NC accession numbers that
+This script goes through a dir of FINAL_RESULTS.csv files and finds the NC accession numbers that
 correspond to specific Genus_species_subspecies titles. The script then creates two new columns
 in the csv file (accession of the query and common name of the hit) with the newfound data from
 the original results file. The matches are found by matching the hits with 100 percent identity
@@ -11,15 +11,14 @@ and adding the query name and hit accession number to the "name_to_accession" an
 "accession_to_name" dicts.
 """
 
-file_path = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST_Data_Analysis/test_phylo_fill/FINAL_RESULTS.csv"
-save_file_path = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST_Data_Analysis/test_phylo_fill/FINAL_RESULTS_FIXED.csv"
+results_path = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST_Data_Analysis/selected_seqs"
 name_to_accession = {}
 accession_to_name = {}
-row_data = []
 
-def collect_matches():
+def collect_matches(file_path):
 
 	with open(file_path, 'rb') as csv_file:
+		row_data = []
 		reader = csv.reader(csv_file, delimiter=',')
 		for row in reader:
 			row_data.append(row)
@@ -29,12 +28,13 @@ def collect_matches():
 				accession_to_name[row[1]] = row[0]
 
 		csv_file.close()
+		return row_data
 
 
-def fill_in_phylo_info():
-	with open(save_file_path, 'wb+') as csv_result_file:
+def fill_in_phylo_info(file_path, current_row_data):
+	with open(file_path, 'wb+') as csv_result_file:
 		writer = csv.writer(csv_result_file, delimiter=',')
-		for row in row_data:
+		for row in current_row_data:
 			hit_accession = name_to_accession[row[0]]
 			query_name = accession_to_name[row[1]]
 			print hit_accession + " : " + query_name
@@ -42,9 +42,23 @@ def fill_in_phylo_info():
 
 		csv_result_file.close()
 
+def fill_results_folder():
+	for dir_name in os.listdir(results_path):
+		row_data = []
+		if dir_name != '.DS_Store':
+			print "Filling in phlyo for {}".format(dir_name)
+			file_to_fill = results_path + "/" + dir_name + "/FINAL_RESULTS.csv"
+			try:
+				current_row_data = collect_matches(file_to_fill)
+				fill_in_phylo_info(file_to_fill, current_row_data)
+			except:
+				print "file already sorted or input is not in expected order"
+				pass
+
+
 def main():
-	collect_matches()
-	fill_in_phylo_info()
+	fill_results_folder()
+	
 
 if __name__ == "__main__":
 	main()
