@@ -101,25 +101,47 @@ class BlastQuery:
 
 		with open(save_file, 'wb') as f:
 
-			c = csv.writer(f, delimiter=',')
+			c = csv.writer(f, delimiter=',') # problem with commas in the name..results in splitting name TODO
 
 			for index, line in enumerate(self.blast_results_array):
 
 				print index, line
 
-				if index == 0:
-					c.writerow((['Query', 'Hit', 'Percent Similarity',
+				if len(line) > 5:
+					if index == 0:
+						c.writerow((['Query', 'Hit', 'Percent Similarity',
 								 'Distance to Common Ancestor', 'Hit Seq',
 								 'Hit Seq Len (bp)']))
 
-				query = line[0]
-				target = line[1]
-				percent_sim = line[2].replace('\n', '')
-				dist_to_common_anc = (100.0 - float(percent_sim)) / 2
-				hit_seq = line[3]
-				hit_len = len(hit_seq)
+					for i,j in enumerate(line):
+						print "_COMPLETE {} {}".format(i, j)
 
-				c.writerow([query, target, percent_sim, dist_to_common_anc, hit_seq, hit_len])
+					query = line[0]
+					target = line[1] + line[2]
+					percent_diff = line[3].replace('\n', '')
+					dist_to_common_anc = (100.0 - float(percent_diff)) / 2
+					hit_seq = line[5]
+					hit_len = len(hit_seq)
+
+					c.writerow([query, target, percent_diff, dist_to_common_anc, hit_seq, hit_len])
+				else:
+
+					if index == 0:
+						c.writerow((['Query', 'Hit', 'Percent Similarity',
+									 'Distance to Common Ancestor', 'Hit Seq',
+									 'Hit Seq Len (bp)']))
+
+					for i,j in enumerate(line):
+						print "NORMAL {} {}".format(i, j)
+
+					query = line[0]
+					target = line[1]
+					percent_diff = line[2].replace('\n', '')
+					dist_to_common_anc = (100.0 - float(percent_diff)) / 2
+					hit_seq = line[3]
+					hit_len = len(hit_seq)
+
+					c.writerow([query, target, percent_diff, dist_to_common_anc, hit_seq, hit_len])
 
 		return save_dir + save_name
 

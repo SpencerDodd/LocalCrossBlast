@@ -44,7 +44,7 @@ class LocalCrossBlast:
 	def __init__(self):
 
 		self.program_root_dir = self.one_directory_back(os.getcwd())
-		self.base_results_dir = "/Volumes/Results/species/"
+		self.base_results_dir = "/Users/spencerdodd/Desktop/genus/" #"/Volumes/Results/genus/"
 		self.results_dir = None
 		self.temp_save_path = None
 		self.query_database = None
@@ -61,10 +61,10 @@ class LocalCrossBlast:
 		self.mito_size_cutoff = 10000
 
 		# for checking if sequence has already been blasted by this query
-		self.saved_sequences = "/Volumes/Results/species/saved_seqs/used.txt"
+		self.saved_sequences = "/Users/spencerdodd/Desktop/genus/saved_seqs/used.txt" #"/Volumes/Results/genus/saved_seqs/used.txt"
 
 		# for phylogenetic selection of genus{0} species{1} and subspecies {2}
-		self.phylo_check_level = 1
+		self.phylo_check_level = 0
 
 		# for output percentage
 		self.genus_lookup_index = 0
@@ -199,6 +199,7 @@ class LocalCrossBlast:
 
 				try:
 					hit_accession_number = result[1]
+					print "HIT ACCESSION : {}".format(hit_accession_number) # DEBUG TODO FOR HTTP ERROR 400 BAD REQUEST
 					hit_handle = Entrez.efetch(db="nucleotide",
 											   id=hit_accession_number,
 											   rettype="gb", retmode="text")
@@ -246,9 +247,9 @@ class LocalCrossBlast:
 					else:
 
 						self.gap_in_hits += 1
-				except:
 
-					print "Connection error: Retrying ..."
+				except Exception as e:
+					print "Connection error: {} | Retrying ...".format(e)
 
 			else:
 
@@ -300,7 +301,8 @@ class LocalCrossBlast:
 
 	def get_accession_from_sequence_title(self, query_first_column):
 
-		print query_first_column
+		print "Getting accession from sequence title ..."
+		print "sequence title: {}".format(query_first_column)
 
 		if "ref" in query_first_column:
 			self.query_accession_number = query_first_column.split("ref")[1]
