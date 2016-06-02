@@ -17,7 +17,7 @@ def indiv_to_compilation():
 	second = datetime.datetime.today().time().second
 
 	# output file to folder "Compilations", 1 level back from pwd
-	file_path = '/Users/spencerdodd/Desktop/'
+	file_path = '/root/Research/mito_phylo/LocalCrossBlast/seqs/'
 
 	# make dir if it doesn't already exist
 	if not os.path.exists(file_path):

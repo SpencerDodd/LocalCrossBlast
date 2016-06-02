@@ -9,14 +9,14 @@ import threading
 import os
 
 global databases
+db_path = "/root/Research/ncbi-blast-2.4.0+/db/"
 databases = [
-	["refseq_genomic", "refseq_genomic"],
 	["prado_db",
-	 "/Users/spencerdodd/Documents/Research/Khrapko_Lab/Mitochondrial_Genomics/Scripts/ncbi-blast-2.3.0+/db/pradodb.fsa"],
+	 "{}pradodb.fsa".format(db_path)],
 	["full_mito_db",
-	 "/Users/spencerdodd/Documents/Research/Khrapko_Lab/Mitochondrial_Genomics/Scripts/ncbi-blast-2.3.0+/db/full_mito_db.fsa"],
+	 "{}full_mito_db.fsa".format(db_path)],
 	["subspecies_only",
-	 "/Users/spencerdodd/Documents/Research/Khrapko_Lab/Mitochondrial_Genomics/Scripts/ncbi-blast-2.3.0+/db/subspecies_only.fsa"]
+	 "{}subspecies_only.fsa".format(db_path)]
 ]
 
 

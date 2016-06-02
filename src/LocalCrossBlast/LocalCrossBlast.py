@@ -44,7 +44,7 @@ class LocalCrossBlast:
 	def __init__(self):
 
 		self.program_root_dir = self.one_directory_back(os.getcwd())
-		self.base_results_dir = "/Users/spencerdodd/Desktop/genus/" #"/Volumes/Results/genus/"
+		self.base_results_dir = "/root/Research/mito_phylo/Results/genus/" #"/Volumes/Results/genus/"
 		self.results_dir = None
 		self.temp_save_path = None
 		self.query_database = None
@@ -61,7 +61,7 @@ class LocalCrossBlast:
 		self.mito_size_cutoff = 10000
 
 		# for checking if sequence has already been blasted by this query
-		self.saved_sequences = "/Users/spencerdodd/Desktop/genus/saved_seqs/used.txt" #"/Volumes/Results/genus/saved_seqs/used.txt"
+		self.saved_sequences = self.base_results_dir + "saved_seqs/used.txt" #"/Volumes/Results/genus/saved_seqs/used.txt"
 
 		# for phylogenetic selection of genus{0} species{1} and subspecies {2}
 		self.phylo_check_level = 0
