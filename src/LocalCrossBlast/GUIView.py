@@ -9,7 +9,7 @@ import threading
 import os
 
 global databases
-db_path = "/root/Research/ncbi-blast-2.4.0+/db/"
+db_path = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/Mitochondrial_Genomics/Scripts/ncbi-blast-2.3.0+/db/"
 databases = [
 	["prado_db",
 	 "{}pradodb.fsa".format(db_path)],
@@ -174,7 +174,8 @@ class GUIView(Frame):
 	# gets the database location
 	def set_db(self, db_selection):
 		if len(db_selection) > 0:
-			print db_selection
+			
+			print "Database Selection: {}".format(db_selection)
 
 			self.database_location = databases[db_selection[0]][1]
 			self.refresh_window()
@@ -222,6 +223,8 @@ class GUIView(Frame):
 		else:
 
 			seq_files = self.filter_seq_files(os.listdir(self.folder_location))
+
+			print "Seq Folder: {}".format(self.folder_location)
 
 			for sequence in seq_files:
 

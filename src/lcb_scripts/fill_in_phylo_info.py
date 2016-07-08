@@ -15,7 +15,7 @@ and adding the query name and hit accession number to the "name_to_accession" an
 "accession_to_name" dicts.
 """
 
-results_path = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST_Data_Analysis/selected_seqs"
+results_path = "/Users/spencerdodd/Desktop/genus"
 name_to_accession = {}
 accession_to_name = {}
 

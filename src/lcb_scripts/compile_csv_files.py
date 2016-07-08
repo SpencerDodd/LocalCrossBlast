@@ -7,10 +7,10 @@ This script finds all CSV files within a given directory tree and compiles them 
 CSV file.
 """
 # GLOBAL VARS
-target_path = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST_Data_Analysis/selected_seqs"
+target_path = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST/results/prado_debug"
 file_paths = []
 all_rows = []
-save_path = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST_Data_Analysis/COMPILED_RESULTS.csv"
+save_path = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST/results/prado_debug/COMPILED_RESULTS.csv"
 problem_data = [
 	'Parastagonospora_nodorum_SN15',
 	'Echymipera_rufescens_australis',
@@ -21,7 +21,14 @@ problem_data = [
 	'Coccomyxa_subellipsoidea_C-169',
 	'Komagataella_phaffii_CBS_7435',
 	'Aspergillus_nidulans_FGSC_A4',
-	'Saccharomyces_cerevisiae_S288c'
+	'Saccharomyces_cerevisiae_S288c',
+	'Rhizophydium_sp._136',
+	'Placozoan_sp._BZ2423',
+	'Monoblepharella_sp._JEL15',
+	'Helicosporidium_sp._ex_Simulium_jonesi',
+	'Trebouxiophyceae_sp._MX-AZ01',
+	'Microbotryum_cf._violaceum_BFL-2013',
+	'Monomastix_sp._OKE-1'
 ]
 
 def get_files():
@@ -66,6 +73,11 @@ def delete_problem_data(query_name):
 
 
 def main():
+	try:
+		os.remove(save_path)
+	except:
+		print 'save_file not created yet'
+		pass
 	get_files()
 	get_rows()
 	output_compilation_file()

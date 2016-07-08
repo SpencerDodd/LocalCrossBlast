@@ -1,15 +1,15 @@
 import os
-import sys
 import csv
+
 """
-This script removes rows from a set of result data that does not have a subspecies level of
-definition in either the query or the hit sequence. It also removes rows that are self-hits. i.e.
-hits that are the query sequence (100 percent identity).
+This script removes hits from the results CSV file that contain hits that compare two seqs
+of the same species. This is to establish a lower boundary of this within the genus query
+that excludes hits in the species query.
 """
 
 # GLOBAL VARS
-file_path = "/Users/spencerdodd/Desktop/genus/PARSED.csv"
-save_path = "/Users/spencerdodd/Desktop/genus/PARSED_COMPLETE.csv"
+file_path = "/Users/spencerdodd/Desktop/genus/PARSED_COMPLETE.csv"
+save_path = "/Users/spencerdodd/Desktop/genus/PARSED_NO_SPECIES_HITS.csv"
 rows_to_keep = []
 
 def get_data():
@@ -17,7 +17,7 @@ def get_data():
 		reader = csv.reader(current_file, delimiter=',')
 		for row in reader:
 			print row
-			if len(row[0].split("_")) > 2 and len(row[2].split("_")) > 2:
+			if row[0].split("_")[1] != row[2].split("_")[1]:
 				rows_to_keep.append(row)
 		current_file.close()
 

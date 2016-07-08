@@ -44,7 +44,7 @@ class LocalCrossBlast:
 	def __init__(self):
 
 		self.program_root_dir = self.one_directory_back(os.getcwd())
-		self.base_results_dir = "/root/Research/mito_phylo/Results/genus/" #"/Volumes/Results/genus/"
+		self.base_results_dir = "/Users/spencerdodd/Documents/Research/Khrapko_Lab/LocalCrossBLAST/results/prado_debug/" #"/Volumes/Results/genus/"
 		self.results_dir = None
 		self.temp_save_path = None
 		self.query_database = None
@@ -59,6 +59,10 @@ class LocalCrossBlast:
 		self.query_accession_number = None
 		self.gap_in_hits = 0
 		self.mito_size_cutoff = 10000
+
+		# NOTE: change this to False only if you know the correct info can be parsed from 
+		# the DB sequence names (NOT THE CASE IF DB IS COMPILED FROM NCBI DATABASES!)
+		self.ncbi_parse_genus_info = False
 
 		# for checking if sequence has already been blasted by this query
 		self.saved_sequences = self.base_results_dir + "saved_seqs/used.txt" #"/Volumes/Results/genus/saved_seqs/used.txt"
@@ -153,107 +157,189 @@ class LocalCrossBlast:
 
 	def add_initial_genus_phylogenetic_info(self):
 
-		try:
+		# ------------------------------------------------------------------
+		# Two avenues of genus parsing (ensure it is correct)
+		# ------------------------------------------------------------------
+		# READ THE __init__ info on this selector
+		if self.ncbi_parse_genus_info:
 
-			print "Getting genus phylogentic info ..."  # for line in results
+			try:
+
+				print "Getting genus phylogentic info (NCBI)..."  # for line in results
+				self.genus_hits_to_search = len(
+					self.initial_query.blast_results_array)
+				query_first_column = self.initial_query.blast_results_array[0][0]
+				self.get_accession_from_sequence_title(query_first_column)
+
+				if self.query_accession_number == "cannot_parse_accession":
+					raise Exception("Cannot parse accession number.. exiting")
+
+				query_handle = Entrez.efetch(db="nucleotide",
+											 id=self.query_accession_number,
+											 rettype="gb", retmode="text")
+				query_x = SeqIO.read(query_handle, 'genbank')
+				query_name = query_x.annotations['organism']
+				query_genus = query_name.split(" ")[self.phylo_check_level]
+
+				# save for later (checking if results already exist)
+				self.initial_name = query_name
+				self.initial_genus = query_genus
+
+			except:
+				print "Problem connecting to Entrez. Retrying ..."
+				print traceback.print_exc()
+				self.add_initial_genus_phylogenetic_info()
+
+			if self.query_already_made():
+				# for GUI
+				self.set_completion_to_100()
+				raise Exception(
+					"Query for phylogenetic level already made. Aborting BLAST ...")
+
+			if not self.query_has_subspecies():
+				self.set_completion_to_100()
+				raise Exception("Query doesn't have subspecies level of definition")
+
+			for index, result in enumerate(self.initial_query.blast_results_array):
+
+				self.genus_lookup_index = index
+
+				if self.gap_in_hits < 20:
+
+					try:
+						hit_accession_number = result[1]
+						print "HIT ACCESSION : {}".format(hit_accession_number) # DEBUG TODO FOR HTTP ERROR 400 BAD REQUEST
+						hit_handle = Entrez.efetch(db="nucleotide",
+												   id=hit_accession_number,
+												   rettype="gb", retmode="text")
+						hit_x = SeqIO.read(hit_handle, 'genbank')
+						hit_name = hit_x.annotations['organism']
+						hit_seq = result[4]
+						hit_seq_length = len(result[4])
+						hit_genus = hit_name.split(" ")[self.phylo_check_level]
+
+						num_of_hits = len(self.initial_query.blast_results_array)
+						percent_complete = (index * 1.0 / num_of_hits * 100)
+
+						print "comparing: {0} | {1} {2}{3}/{4} {5}%".format(
+							query_genus, hit_genus,
+							" " * (50 - (len(query_genus) + len(hit_genus))), index,
+							num_of_hits, percent_complete)
+
+						if query_genus == hit_genus and hit_seq_length > self.mito_size_cutoff:
+							print "Adding relation: {0} | {1}".format(query_name,
+																	  hit_name)
+							self.initial_results_to_cross.append(
+								[hit_name, hit_seq])
+							self.cross_gids.append(result[2])
+							self.cross_accessions.append(result[1])
+
+							# TODO TODO TODO TODO
+							# fix so that cross blasts work off of a gilist compiled
+							# by the self.cross_gids that is built in this step
+
+							# potential option is as follows
+							#	- compile list of GIDs into a txt file in .../bin/blastn
+							#	- blastdb_aliastool -gilist XXXXXXXX.gi_list.txt -db refseq_genomic -out refseq_query_db -title refseq_query_db
+							#	- use ^^^ database for crossblasting
+							# PROBLEMS ^^^^: Segmentation Fault: 11 on aliastool db creation
+							#	- additionally, gi_list.txt needs to be in /bin/..kind of
+							#		annoying
+
+							# another potential fix:
+							#	remove unwanted sequences from the results file before
+							#	performing analysis
+							# TODO TODO TODO TODO
+
+							self.gap_in_hits = 0
+
+						else:
+
+							self.gap_in_hits += 1
+
+					except Exception as e:
+						print "Connection error: {} | Retrying ...".format(e)
+
+				else:
+
+					self.genus_lookup_index = self.genus_hits_to_search
+
+		# ------------------------------------------------------------------
+		# READ THE __init__ info on this selector
+		if not self.ncbi_parse_genus_info:
+
 			self.genus_hits_to_search = len(
-				self.initial_query.blast_results_array)
+					self.initial_query.blast_results_array)
 			query_first_column = self.initial_query.blast_results_array[0][0]
-			self.get_accession_from_sequence_title(query_first_column)
+			
+			# Query info
+			self.query_accession_number = query_first_column.split("_")[-1]
+			query_name = query_first_column
+			query_genus = query_first_column.split("_")[0]
 
-			if self.query_accession_number == "cannot_parse_genus":
-				raise Exception("Cannot parse genus.. exiting")
-
-			query_handle = Entrez.efetch(db="nucleotide",
-										 id=self.query_accession_number,
-										 rettype="gb", retmode="text")
-			query_x = SeqIO.read(query_handle, 'genbank')
-			query_name = query_x.annotations['organism']
-			query_genus = query_name.split(" ")[self.phylo_check_level]
-
-			# save for later (checking if results already exist)
 			self.initial_name = query_name
 			self.initial_genus = query_genus
 
+			print "----------------------"
+			print "query acc: {}".format(self.query_accession_number)
+			print "query name: {}".format(query_name)
+			print "query genus: {}".format(query_genus)
 
-		except:
-			print "Problem connecting to Entrez. Retrying ..."
-			print traceback.print_exc()
-			self.add_initial_genus_phylogenetic_info()
+			if self.query_already_made():
+				# for GUI
+				self.set_completion_to_100()
+				raise Exception(
+					"Query for phylogenetic level already made. Aborting BLAST ...")
 
-		if self.query_already_made():
-			# for GUI
-			self.set_completion_to_100()
-			raise Exception(
-				"Query for phylogenetic level already made. Aborting BLAST ...")
+			if not self.query_has_subspecies():
+				self.set_completion_to_100()
+				raise Exception("Query doesn't have subspecies level of definition")
 
-		if not self.query_has_subspecies():
-			self.set_completion_to_100()
-			raise Exception("Query doesn't have subspecies level of definition")
+			for index, result in enumerate(self.initial_query.blast_results_array):
 
-		for index, result in enumerate(self.initial_query.blast_results_array):
+				self.genus_lookup_index = index
 
-			self.genus_lookup_index = index
+				if self.gap_in_hits < 20:
 
-			if self.gap_in_hits < 20:
+					try:
 
-				try:
-					hit_accession_number = result[1]
-					print "HIT ACCESSION : {}".format(hit_accession_number) # DEBUG TODO FOR HTTP ERROR 400 BAD REQUEST
-					hit_handle = Entrez.efetch(db="nucleotide",
-											   id=hit_accession_number,
-											   rettype="gb", retmode="text")
-					hit_x = SeqIO.read(hit_handle, 'genbank')
-					hit_name = hit_x.annotations['organism']
-					hit_seq = result[4]
-					hit_seq_length = len(result[4])
-					hit_genus = hit_name.split(" ")[self.phylo_check_level]
+						hit_name = result[0]
+						hit_seq = result[4]
+						hit_seq_length = len(result[4])
+						hit_genus = hit_name.split("_")[0]
 
-					num_of_hits = len(self.initial_query.blast_results_array)
-					percent_complete = (index * 1.0 / num_of_hits * 100)
+						num_of_hits = len(self.initial_query.blast_results_array)
+						percent_complete = (index * 1.0 / num_of_hits * 100)
 
-					print "comparing: {0} | {1} {2}{3}/{4} {5}%".format(
-						query_genus, hit_genus,
-						" " * (50 - (len(query_genus) + len(hit_genus))), index,
-						num_of_hits, percent_complete)
+						print "comparing: {0} | {1} {2}{3}/{4} {5}%".format(
+							query_genus, hit_genus,
+							" " * (50 - (len(query_genus) + len(hit_genus))), index,
+							num_of_hits, percent_complete)
 
-					if query_genus == hit_genus and hit_seq_length > self.mito_size_cutoff:
-						print "Adding relation: {0} | {1}".format(query_name,
-																  hit_name)
-						self.initial_results_to_cross.append(
-							[hit_name, hit_seq])
-						self.cross_gids.append(result[2])
-						self.cross_accessions.append(result[1])
+						if query_genus == hit_genus and hit_seq_length > self.mito_size_cutoff:
+							print "Adding relation: {0} | {1}".format(query_name,
+																	  hit_name)
+							self.initial_results_to_cross.append(
+								[hit_name, hit_seq])
+							self.cross_gids.append(result[2])
+							self.cross_accessions.append(result[1])
 
-						# TODO TODO TODO TODO
-						# fix so that cross blasts work off of a gilist compiled
-						# by the self.cross_gids that is built in this step
+							self.gap_in_hits = 0
 
-						# potential option is as follows
-						#	- compile list of GIDs into a txt file in .../bin/blastn
-						#	- blastdb_aliastool -gilist XXXXXXXX.gi_list.txt -db refseq_genomic -out refseq_query_db -title refseq_query_db
-						#	- use ^^^ database for crossblasting
-						# PROBLEMS ^^^^: Segmentation Fault: 11 on aliastool db creation
-						#	- additionally, gi_list.txt needs to be in /bin/..kind of
-						#		annoying
+						else:
 
-						# another potential fix:
-						#	remove unwanted sequences from the results file before
-						#	performing analysis
-						# TODO TODO TODO TODO
+							self.gap_in_hits += 1
 
-						self.gap_in_hits = 0
+					except Exception as e:
+						print "Connection error: {} | Retrying ...".format(e)
 
-					else:
+				else:
 
-						self.gap_in_hits += 1
+					self.genus_lookup_index = self.genus_hits_to_search
 
-				except Exception as e:
-					print "Connection error: {} | Retrying ...".format(e)
 
-			else:
 
-				self.genus_lookup_index = self.genus_hits_to_search
+		# ------------------------------------------------------------------
 
 	"""
 	Returns true if the query does not have a subspecies level of definition
@@ -261,40 +347,67 @@ class LocalCrossBlast:
 
 	def query_has_subspecies(self):
 
-		phylo = self.initial_name.split(" ")
-		print phylo
-		if len(phylo) < 3:
-			return False
+		if self.ncbi_parse_genus_info:
+
+			phylo = self.initial_name.split(" ")
+			print "Phylo: {}".format(phylo)
+			if len(phylo) < 3:
+				return False
+			else:
+				return True
+
 		else:
-			return True
+
+			phylo = self.initial_name.split("_")
+			print "Phylo: {}".format(phylo)
+			if len(phylo) < 3:
+				return False
+			else:
+				return True
 
 	"""
 	returns true if the query genus already has results in the results directory
 	"""
 
 	def query_already_made(self):
+		try:
 
-		print "Checking if query has already been made"
+			print "------------------------------------------------------"
+			print "Debug shit"
+			print "Checking if query has already been made"
+			print "base_results_dir: {}".format(self.base_results_dir)
+			for x in os.walk(self.base_results_dir):
+				print x
+			print "------------------------------------------------------"
 
-		results = [x[0] for x in os.walk(self.base_results_dir)]
+			results = [x[0] for x in os.walk(self.base_results_dir)]
 
-		self.num_of_genus_hits = 0
+			self.num_of_genus_hits = 0
 
-		for result in results:
-			if self.initial_genus in result and "genus_fasta_seqs" not in result:
-				self.num_of_genus_hits += 1
-				print "{0} in | query hit: {1}".format(self.initial_genus,
-													   result)
+			for result in results:
 
-		print "number of genus hits for {0}: {1}".format(self.num_of_genus_hits,
-														 self.initial_genus)
+				print "------------------------------------------------------"
+				print "Debug shit"
+				print "initial genus: {}".format(self.initial_genus)
+				print "result: {}".format(result)
 
-		if self.num_of_genus_hits > 1:
-			"Query has already been made. Exiting BLAST ..."
-			return True
+				if self.initial_genus in result and "genus_fasta_seqs" not in result:
+					self.num_of_genus_hits += 1
+					print "{0} in | query hit: {1}".format(self.initial_genus,
+														   result)
 
-		"Query genus is novel. Continuing"
-		return False
+			print "number of genus hits for {0}: {1}".format(self.num_of_genus_hits,
+															 self.initial_genus)
+
+			if self.num_of_genus_hits > 1:
+				"Query has already been made. Exiting BLAST ..."
+				return True
+
+			"Query genus is novel. Continuing"
+			return False
+		except Exception as e:
+			print ("Problem is here my man id:421542352353425")
+			print traceback(e)
 
 	"""
 	"""
@@ -313,9 +426,9 @@ class LocalCrossBlast:
 		elif "gb" in query_first_column:
 			self.query_accession_number = query_first_column.split("gb")[1]
 		else:
-			self.query_accession_number = "cannot_parse_genus"
+			self.query_accession_number = "cannot_parse_accession"
 
-		print self.query_accession_number
+		print "Accession Number: {}".format(self.query_accession_number)
 
 	"""
 	Creates queries for each of the initial blast query results. This is the
